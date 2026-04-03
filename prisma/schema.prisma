@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  role          String    @default("customer") // customer, admin, manager
+  avatar        String?
+  points        Int       @default(0)
+  level         Int       @default(1)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+  reviews       Review[]
+  cartItems     CartItem[]
+  badges        UserBadge[]
+  pointHistory  PointHistory[]
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  parentId    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  name          String
+  slug          String    @unique
+  description   String
+  shortDesc     String?
+  price         Float
+  comparePrice  Float?
+  categoryId    String
+  images        String    @default("[]")
+  model3D       String?
+  colors        String    @default("[]")
+  materials     String    @default("[]")
+  dimensions    String?
+  weight        Float?
+  stock         Int       @default(0)
+  isFeatured    Boolean   @default(false)
+  isNew         Boolean   @default(false)
+  rating        Float     @default(0)
+  reviewCount   Int       @default(0)
+  tags          String    @default("[]")
+  seoTitle      String?
+  seoDesc       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  category      Category  @relation(fields: [categoryId], references: [id])
+  orderItems    OrderItem[]
+  reviews       Review[]
+  cartItems     CartItem[]
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  userId     String
+  rating     Int
+  title      String?
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product    Product  @relation(fields: [productId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  userId      String
+  status      String   @default("pending") // pending, confirmed, shipped, delivered, cancelled
+  total       Float
+  subtotal    Float
+  tax         Float
+  shipping    Float
+  address     String
+  city        String
+  country     String
+  zipCode     String
+  paymentMethod String  @default("credit_card")
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  color     String?
+  material  String?
+  engraving String?
+
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  userId    String?
+  sessionId String?
+  productId String
+  quantity  Int     @default(1)
+  color     String?
+  material  String?
+  engraving String?
+
+  user      User?   @relation(fields: [userId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Badge {
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  requirement Int
+  createdAt   DateTime  @default(now())
+
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+}
+
+model PointHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  points      Int
+  reason      String
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  event      String
+  properties String   @default("{}")
+  sessionId  String?
+  userId     String?
+  createdAt  DateTime @default(now())
+}

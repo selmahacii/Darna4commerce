@@ -1,250 +1,256 @@
 import { db } from '@/lib/db';
 
-const categories = [
-  { name: 'Electronics', slug: 'electronics', description: 'Premium audio, watches, and smart devices' },
-  { name: 'Furniture', slug: 'furniture', description: 'Modern chairs, desks, and home furnishings' },
-  { name: 'Accessories', slug: 'accessories', description: 'Bags, lighting, and home decor' },
-];
-
-const products = [
-  {
-    name: 'Aura Pro Wireless Headphones',
-    slug: 'aura-pro-headphones',
-    description: 'Experience unparalleled audio clarity with the Aura Pro Wireless Headphones. Featuring active noise cancellation, 40mm custom drivers, and up to 60 hours of battery life. The premium memory foam ear cushions provide all-day comfort, while the sleek matte black finish makes a bold statement.',
-    shortDesc: 'Premium ANC headphones with 60h battery',
-    price: 349.99,
-    comparePrice: 449.99,
-    categorySlug: 'electronics',
-    images: '["/images/products/headphones.png"]',
-    colors: '["#1a1a1a","#c8c8c8","#8B4513","#1e3a5f"]',
-    materials: '["Matte Plastic","Premium Leather","Aluminum"]',
-    dimensions: '20 x 18 x 8 cm',
-    weight: 0.31,
-    stock: 145,
-    isFeatured: true,
-    isNew: true,
-    rating: 4.8,
-    reviewCount: 234,
-    tags: '["wireless","anc","premium","audio"]',
-    seoTitle: 'Aura Pro Wireless Headphones - Premium ANC Audio',
-    seoDesc: 'Buy Aura Pro Wireless Headphones with active noise cancellation, 60h battery, premium comfort.',
-  },
-  {
-    name: 'Ergonix Pro Office Chair',
-    slug: 'ergonix-pro-chair',
-    description: 'The Ergonix Pro combines cutting-edge ergonomics with sophisticated design. Featuring 4D adjustable armrests, breathable mesh back, synchronized tilt mechanism, and lumbar support that adapts to your posture. Built for professionals who demand the best.',
-    shortDesc: 'Ergonomic mesh office chair with lumbar support',
-    price: 899.99,
-    comparePrice: 1099.99,
-    categorySlug: 'furniture',
-    images: '["/images/products/chair.png"]',
-    colors: '["#2d2d2d","#4a5568","#1a365d","#744210"]',
-    materials: '["Mesh","Premium Fabric","Genuine Leather"]',
-    dimensions: '68 x 70 x 120 cm',
-    weight: 18.5,
-    stock: 42,
-    isFeatured: true,
-    isNew: false,
-    rating: 4.9,
-    reviewCount: 567,
-    tags: '["ergonomic","office","mesh","premium"]',
-    seoTitle: 'Ergonix Pro Office Chair - Ergonomic Excellence',
-    seoDesc: 'Shop the Ergonix Pro Office Chair with 4D armrests, breathable mesh, and adaptive lumbar support.',
-  },
-  {
-    name: 'Chronos Smart Watch',
-    slug: 'chronos-smart-watch',
-    description: 'The Chronos Smart Watch merges luxury craftsmanship with intelligent technology. Featuring a sapphire crystal display, health monitoring suite, GPS tracking, and 7-day battery life. The titanium case is water resistant to 100m.',
-    shortDesc: 'Luxury smartwatch with sapphire crystal display',
-    price: 599.99,
-    comparePrice: 749.99,
-    categorySlug: 'electronics',
-    images: '["/images/products/watch.png"]',
-    colors: '["#c0c0c0","#ffd700","#1a1a1a","#b76e79"]',
-    materials: '["Titanium","Stainless Steel","Ceramic"]',
-    dimensions: '4.4 x 4.4 x 1.2 cm',
-    weight: 0.052,
-    stock: 89,
-    isFeatured: true,
-    isNew: true,
-    rating: 4.7,
-    reviewCount: 189,
-    tags: '["smartwatch","luxury","titanium","gps"]',
-    seoTitle: 'Chronos Smart Watch - Luxury Meets Technology',
-    seoDesc: 'Discover the Chronos Smart Watch with sapphire crystal, health suite, GPS, and 7-day battery.',
-  },
-  {
-    name: 'Lumière Designer Lamp',
-    slug: 'lumiere-designer-lamp',
-    description: 'The Lumière Designer Lamp is a masterpiece of form and function. Its adjustable brass-finished arm and hand-blown glass shade create the perfect ambient lighting. Touch-sensitive dimming with 4 color temperature modes.',
-    shortDesc: 'Adjustable brass desk lamp with touch dimming',
-    price: 279.99,
-    comparePrice: 349.99,
-    categorySlug: 'accessories',
-    images: '["/images/products/lamp.png"]',
-    colors: '["#b8860b","#c0c0c0","#1a1a1a","#c8a2c8"]',
-    materials: '["Brass","Brushed Steel","Matte Black"]',
-    dimensions: '25 x 25 x 55 cm',
-    weight: 2.8,
-    stock: 67,
-    isFeatured: false,
-    isNew: true,
-    rating: 4.6,
-    reviewCount: 98,
-    tags: '["lamp","designer","brass","lighting"]',
-    seoTitle: 'Lumière Designer Lamp - Premium Ambient Lighting',
-    seoDesc: 'Buy the Lumière Designer Lamp with adjustable brass arm, hand-blown glass, and touch dimming.',
-  },
-  {
-    name: 'Nomad Leather Backpack',
-    slug: 'nomad-leather-backpack',
-    description: 'Crafted from full-grain vegetable-tanned leather, the Nomad Backpack develops a rich patina over time. Features a padded 15" laptop compartment, anti-theft back pocket, and water-resistant lining. Built for the modern traveler.',
-    shortDesc: 'Full-grain leather backpack with laptop compartment',
-    price: 449.99,
-    comparePrice: 549.99,
-    categorySlug: 'accessories',
-    images: '["/images/products/backpack.png"]',
-    colors: '["#8B4513","#2d2d2d","#556b2f","#722f37"]',
-    materials: '["Full-Grain Leather","Canvas","Vegan Leather"]',
-    dimensions: '32 x 18 x 45 cm',
-    weight: 1.2,
-    stock: 31,
-    isFeatured: false,
-    isNew: false,
-    rating: 4.8,
-    reviewCount: 312,
-    tags: '["backpack","leather","travel","laptop"]',
-    seoTitle: 'Nomad Leather Backpack - Handcrafted Premium Travel',
-    seoDesc: 'Shop the Nomad Leather Backpack with full-grain leather, laptop compartment, and anti-theft pocket.',
-  },
-  {
-    name: 'Echo Sphere Speaker',
-    slug: 'echo-sphere-speaker',
-    description: 'The Echo Sphere delivers 360-degree immersive sound with its innovative spherical design. Featuring room-calibrating AI, multi-room sync, and premium drivers. The woven fabric exterior comes in designer colors.',
-    shortDesc: '360° immersive speaker with AI room calibration',
-    price: 399.99,
-    comparePrice: 499.99,
-    categorySlug: 'electronics',
-    images: '["/images/products/speaker.png"]',
-    colors: '["#1a1a1a","#f5f5f5","#2d5016","#4a0e4e"]',
-    materials: '["Woven Fabric","Aluminum","Matte Plastic"]',
-    dimensions: '16 x 16 x 18 cm',
-    weight: 1.8,
-    stock: 73,
-    isFeatured: true,
-    isNew: false,
-    rating: 4.7,
-    reviewCount: 456,
-    tags: '["speaker","360","ai","premium"]',
-    seoTitle: 'Echo Sphere Speaker - 360° Immersive Audio',
-    seoDesc: 'Experience the Echo Sphere Speaker with 360° sound, AI calibration, and multi-room sync.',
-  },
-  {
-    name: 'Artisan Ceramic Vase Set',
-    slug: 'artisan-ceramic-vase',
-    description: 'This handcrafted ceramic vase set brings artisanal elegance to any space. Each piece is individually thrown and glazed by skilled craftspeople. The set includes 3 complementary sizes in a matte white finish.',
-    shortDesc: 'Handcrafted ceramic vase set, 3 pieces',
-    price: 189.99,
-    comparePrice: 249.99,
-    categorySlug: 'accessories',
-    images: '["/images/products/vase.png"]',
-    colors: '["#f5f5f5","#e8d5b7","#b8c5d6","#d4c5a9"]',
-    materials: '["Ceramic","Porcelain","Stoneware"]',
-    dimensions: '12 x 12 x 30 cm (largest)',
-    weight: 3.2,
-    stock: 28,
-    isFeatured: false,
-    isNew: true,
-    rating: 4.5,
-    reviewCount: 78,
-    tags: '["vase","ceramic","handmade","decor"]',
-    seoTitle: 'Artisan Ceramic Vase Set - Handcrafted Elegance',
-    seoDesc: 'Shop the Artisan Ceramic Vase Set, handcrafted 3-piece set with matte white glaze.',
-  },
-  {
-    name: 'Vertex Ultrabook Pro',
-    slug: 'vertex-ultrabook-pro',
-    description: 'The Vertex Ultrabook Pro redefines portable computing with its stunning 14" 4K OLED display, latest-gen processor, 32GB RAM, and all-day battery. The CNC-machined aluminum unibody is just 12mm thin.',
-    shortDesc: '14" 4K OLED ultrabook, 32GB RAM',
-    price: 1899.99,
-    comparePrice: 2199.99,
-    categorySlug: 'electronics',
-    images: '[]',
-    colors: '["#c0c0c0","#2d2d2d","#1a365d"]',
-    materials: '["Aluminum","Carbon Fiber","Magnesium"]',
-    dimensions: '31.2 x 22.1 x 1.2 cm',
-    weight: 1.29,
-    stock: 15,
-    isFeatured: true,
-    isNew: true,
-    rating: 4.9,
-    reviewCount: 145,
-    tags: '["laptop","ultrabook","4k","oled"]',
-    seoTitle: 'Vertex Ultrabook Pro - Premium Portable Computing',
-    seoDesc: 'Buy the Vertex Ultrabook Pro with 14" 4K OLED, 32GB RAM, and all-day battery life.',
-  },
-];
-
-const badges = [
-  { name: 'First Purchase', description: 'Made your first purchase', icon: '🛍️', requirement: 1 },
-  { name: 'Review Writer', description: 'Wrote 5 product reviews', icon: '✍️', requirement: 5 },
-  { name: 'Loyal Customer', description: 'Made 10 purchases', icon: '⭐', requirement: 10 },
-  { name: 'Big Spender', description: 'Spent over $1000 total', icon: '💰', requirement: 1000 },
-  { name: 'Trendsetter', description: 'Reviewed a new product', icon: '🔥', requirement: 0 },
-  { name: 'VIP Member', description: 'Earned 5000 points', icon: '👑', requirement: 5000 },
-];
-
 async function seed() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding Algerian artisan database...');
 
-  // Create categories
-  for (const cat of categories) {
-    await db.category.upsert({
-      where: { slug: cat.slug },
-      update: {},
-      create: cat,
-    });
-  }
+  // Reset database
+  await db.orderItem.deleteMany();
+  await db.order.deleteMany();
+  await db.cartItem.deleteMany();
+  await db.review.deleteMany();
+  await db.userBadge.deleteMany();
+  await db.pointHistory.deleteMany();
+  await db.analyticsEvent.deleteMany();
+  await db.product.deleteMany();
+  await db.badge.deleteMany();
+  await db.category.deleteMany();
+  await db.user.deleteMany();
+
+  // Categories
+  const categories = await Promise.all([
+    db.category.create({ data: { name: 'Leather & Artisan', slug: 'leather-artisan', description: ' cuirs artisans, babouches, sacs' } }),
+    db.category.create({ data: { name: 'Luminaires', slug: 'luminaires', description: ' lanternes, bougies, éclairage traditionnel' } }),
+    db.category.create({ data: { name: 'Textiles', slug: 'textiles', description: ' couvertures berbères, tapis, coussins' } }),
+    db.category.create({ data: { name: 'Cuisine', slug: 'cuisine', description: ' tagines, huile d\'olive, épices, teranga' } }),
+    db.category.create({ data: { name: 'Bijoux', slug: 'bijoux', description: ' bijoux amazighs, argent, fibule kabyle' } }),
+  ]);
   console.log(`✅ Created ${categories.length} categories`);
 
-  // Create products
+  // Products with DZD pricing
+  const products = [
+    {
+      name: 'Babouches Artisanales en Cuir',
+      slug: 'babouches-cuir-artisanal',
+      description: 'Confectionnées à la main par nos artisans de la Casbah d\'Alger, ces babouches en cuir pleine fleur allient tradition et élégance. Le cuir est tanné naturellement, sans produits chimiques, et cousu avec le fil doré traditionnel. Chaque paire est unique — légèrement différente de sa voisine, comme tout ce qui est fait avec le cœur.',
+      shortDesc: 'Babouches en cuir véritable, cousues main à Alger',
+      price: 8500,
+      comparePrice: 12000,
+      categoryId: categories[0].id,
+      images: '["/images/products/babouches.png"]',
+      colors: '["#8B4513","#2d2d2d","#C4A35A","#722F37"]',
+      materials: '["Cuir pleine fleur","Cuir d\'agneau","Cuir de chèvre"]',
+      dimensions: 'Variable (S, M, L, XL)',
+      weight: 0.35,
+      stock: 48,
+      isFeatured: true,
+      isNew: true,
+      rating: 4.9,
+      reviewCount: 312,
+      tags: '["babouches","cuir","artisanal","alger","tradition"]',
+      seoTitle: 'Babouches Artisanales Alger — Cuir Fait Main',
+      seoDesc: 'Découvrez nos babouches en cuir cousues main par les artisans de la Casbah. Qualité premium, livraison partout en Algérie.',
+    },
+    {
+      name: 'Lanterne en Laiton Forgé',
+      slug: 'lanterne-laiton-forge',
+      description: 'Cette lanterne en laiton massif est réalisée par les maîtres forgerons de Tlemcen. Chaque ouverture est découpée à la main selon les motifs géométriques ancestraux de la région. Quand la bougie brille à l\'intérieur, les ombres dansent sur vos murs comme à la veille d\'une fête de mariage. Un objet qui raconte une histoire.',
+      shortDesc: 'Lanterne en laiton, motifs géométriques de Tlemcen',
+      price: 12500,
+      comparePrice: 16000,
+      categoryId: categories[1].id,
+      images: '["/images/products/lantern.png"]',
+      colors: '["#B8860B","#C0C0C0","#1a1a1a"]',
+      materials: '["Laiton massif","Cuivre","Bronze"]',
+      dimensions: '28 x 28 x 45 cm',
+      weight: 2.1,
+      stock: 24,
+      isFeatured: true,
+      isNew: false,
+      rating: 4.8,
+      reviewCount: 189,
+      tags: '["lanterne","laiton","tlemcen","artisan","luminaires"]',
+      seoTitle: 'Lanterne Artisanale Tlemcen — Laiton Massif',
+      seoDesc: 'Lanterne en laiton forgé à la main avec motifs traditionnels de Tlemcen. Un éclairage chaleureux pour votre intérieur.',
+    },
+    {
+      name: 'Couverture Berbère Tissage Main',
+      slug: 'couverture-berbere-tissage',
+      description: 'Tissée sur un métier traditionnel par les femmes de la Kabylie, cette couverture en laine mérinos raconte les symboles de notre héritage amazigh — le triangle de la fertilité, les lignes ondulées des rivières de Djurdjura. Chaque couverture demande près de trois semaines de travail patient. Douce, chaude, et pleine d\'âme.',
+      shortDesc: 'Couverture en laine berbère, tissée main en Kabylie',
+      price: 18000,
+      comparePrice: 24000,
+      categoryId: categories[2].id,
+      images: '["/images/products/blanket.png"]',
+      colors: '["#F5F0E1","#C4A35A","#556B2F","#8B4513"]',
+      materials: '["Laine mérinos","Coton bio","Laine recyclée"]',
+      dimensions: '180 x 240 cm',
+      weight: 2.8,
+      stock: 15,
+      isFeatured: true,
+      isNew: true,
+      rating: 4.9,
+      reviewCount: 267,
+      tags: '["couverture","berbere","kabylie","laine","tissage","amazigh"]',
+      seoTitle: 'Couverture Berbère Tissée Main — Laine Kabyle',
+      seoDesc: 'Couverture en laine mérinos tissée à la main en Kabylie. Symboles amazighs authentiques. Un héritage vivant.',
+    },
+    {
+      name: 'Tagine en Céramique Peinte Main',
+      slug: 'tagine-ceramique-peinte',
+      description: 'Notre tagine en céramique est décoré à la main avec les motifs floraux de Constantine. Le couvercle conique permet une cuisson lente et uniforme, comme le font nos grands-mères depuis des générations. La terre cuite donne au plat un goût unique que vous ne retrouverez nulle part ailleurs.',
+      shortDesc: 'Tagine en céramique, motifs floraux de Constantine',
+      price: 6500,
+      comparePrice: 8500,
+      categoryId: categories[3].id,
+      images: '["/images/products/tagine.png"]',
+      colors: '["#C4A35A","#E8D5B7","#1a1a1a","#4A0E4E"]',
+      materials: '["Céramique","Terre cuite","Grès"]',
+      dimensions: '32 cm de diamètre',
+      weight: 3.5,
+      stock: 32,
+      isFeatured: false,
+      isNew: true,
+      rating: 4.7,
+      reviewCount: 156,
+      tags: '["tagine","céramique","constantine","cuisine","tradition"]',
+      seoTitle: 'Tagine en Céramique Peinte Main — Constantine',
+      seoDesc: 'Tagine traditionnel en céramique décoré à la main. Fait pour une cuisine lente et savoureuse.',
+    },
+    {
+      name: 'Huile d\'Olive Extra Vierge Bio',
+      slug: 'huile-olive-bio-kabylie',
+      description: 'Récoltée à la main dans les oliveraies centenaires de la Kabylie, cette huile d\'olive extra vierge est pressée à froid dans les 24 heures. Un goût fruité et légèrement poivré qui vous transporte directement dans nos montagnes. Chaque bouteille porte le nom de la famille qui l\'a produite — parce que chez nous, l\'huile est une question d\'honneur.',
+      shortDesc: 'Huile d\'olive pressée à froid, oliveraies de Kabylie',
+      price: 4200,
+      comparePrice: 5500,
+      categoryId: categories[3].id,
+      images: '["/images/products/olive-oil.png"]',
+      colors: '["#556B2F","#C4A35A"]',
+      materials: '["Première pression à froid","Bio certifié"]',
+      dimensions: '75 cl',
+      weight: 1.2,
+      stock: 120,
+      isFeatured: true,
+      isNew: false,
+      rating: 4.8,
+      reviewCount: 445,
+      tags: '["huile","olive","bio","kabylie","première pression"]',
+      seoTitle: 'Huile d\'Olive Bio Kabylie — Première Pression',
+      seoDesc: 'Huile d\'olive extra vierge bio, pressée à froid dans les oliveraies centenaires de Kabylie.',
+    },
+    {
+      name: 'Collier Fibule Kabyle en Argent',
+      slug: 'collier-fibule-kabyle-argent',
+      description: 'La fibule kabyle est bien plus qu\'un bijou — c\'est un symbole de l\'identité amazigh, porté par les femmes de nos montagnes depuis des millénaires. Chaque pièce est ciselée à la main par nos orfèvres de Tizi Ouzou avec des motifs qui racontent des histoires de courage, de beauté et de liberté. L\'argent 925 garantit une qualité que vous transmettrez de génération en génération.',
+      shortDesc: 'Fibule kabyle en argent 925, ciselée main',
+      price: 28000,
+      comparePrice: 35000,
+      categoryId: categories[4].id,
+      images: '["/images/products/jewelry.png"]',
+      colors: '["#C0C0C0","#FFD700"]',
+      materials: '["Argent 925","Or 18K","Verre émaillé"]',
+      dimensions: '6 cm de diamètre',
+      weight: 0.085,
+      stock: 12,
+      isFeatured: true,
+      isNew: true,
+      rating: 5.0,
+      reviewCount: 98,
+      tags: '["fibule","kabyle","argent","amazigh","bijoux","tifinagh"]',
+      seoTitle: 'Fibule Kabyle en Argent — Bijou Amazigh Authentique',
+      seoDesc: 'Collier fibule kabyle en argent 925, ciselée à la main par les orfèvres de Tizi Ouzou.',
+    },
+    {
+      name: 'Panier en Alfa Tressé Main',
+      slug: 'panier-alfa-tresse',
+      description: 'Tressé à partir de fibres d\'alfa sauvage récoltées dans les Hauts Plateaux, ce panier est le fruit de semaines de travail patient. Les femmes du M\'zab perpétuent ce savoir-faire millénaire avec une précision qui force le respect. Parfait pour le pain, les fruits, ou simplement comme pièce décorative qui raconte notre terre.',
+      shortDesc: 'Panier en alfa, tressé main par les femmes du M\'zab',
+      price: 3800,
+      comparePrice: 5000,
+      categoryId: categories[0].id,
+      images: '["/images/products/basket.png"]',
+      colors: '["#C8A96E","#8B7355","#D4C5A9"]',
+      materials: '["Fibre d\'alfa","Jonc naturel","Rotin"]',
+      dimensions: '30 x 20 x 15 cm',
+      weight: 0.4,
+      stock: 35,
+      isFeatured: false,
+      isNew: false,
+      rating: 4.6,
+      reviewCount: 134,
+      tags: '["panier","alfa","mzab","tressé","artisan","naturel"]',
+      seoTitle: 'Panier en Alfa Tressé Main — Artisanat M\'zab',
+      seoDesc: 'Panier traditionnel tressé en fibre d\'alfa par les artisanes du M\'zab. Éco-responsable et authentique.',
+    },
+    {
+      name: 'Brûle-Encens Bokhour en Cuivre',
+      slug: 'bokhour-encens-cuivre',
+      description: 'Le bokhour fait partie de notre héritage les plus intimes — chaque foyer algérien garde précieusement son mélange d\'encens. Ce brûle-parfum en cuivre gravé de motifs tlemceniens est conçu pour réchauffer votre espace comme seul le vrai artisanat sait le faire. Ajoutez-y du misk, de l\'oud, ou du bois de santal — et laissez la magie opérer.',
+      shortDesc: 'Brûle-encens bokhour en cuivre gravé, tradition algérienne',
+      price: 9200,
+      comparePrice: 11500,
+      categoryId: categories[1].id,
+      images: '["/images/products/bokhour.png"]',
+      colors: '["#B87333","#C0C0C0","#1a1a1a"]',
+      materials: '["Cuivre","Laiton","Bronze"]',
+      dimensions: '15 x 15 x 12 cm',
+      weight: 0.9,
+      stock: 28,
+      isFeatured: false,
+      isNew: true,
+      rating: 4.7,
+      reviewCount: 87,
+      tags: '["bokhour","encens","cuivre","tlemcen","tradition"]',
+      seoTitle: 'Bokhour en Cuivre — Tradition Algérienne',
+      seoDesc: 'Brûle-encens bokhour en cuivre gravé, fait main à Tlemcen. Pour une maison qui sent bon notre terre.',
+    },
+  ];
+
   for (const prod of products) {
-    const category = await db.category.findUnique({ where: { slug: prod.categorySlug } });
-    if (!category) continue;
-    const { categorySlug, ...data } = prod;
-    await db.product.upsert({
-      where: { slug: prod.slug },
-      update: {},
-      create: { ...data, categoryId: category.id },
-    });
+    await db.product.create({ data: prod });
   }
   console.log(`✅ Created ${products.length} products`);
 
-  // Create badges
+  // Badges
+  const badges = [
+    { id: 'premier-achat', name: 'Premier Achat', description: 'Votre premier achat sur Darna', icon: '🛍️', requirement: 1 },
+    { id: 'artisan-connaisseur', name: 'Artisan Connaisseur', description: 'Avez noté 5 produits', icon: '✍️', requirement: 5 },
+    { id: 'fidèle', name: 'Client Fidèle', description: '10 achats effectués', icon: '⭐', requirement: 10 },
+    { id: 'grand-acheteur', name: 'Membre Premium', description: 'Dépensé plus de 50 000 DA', icon: '💎', requirement: 50000 },
+    { id: 'ambassadeur', name: 'Ambassadeur', description: 'Avez partagé 3 produits', icon: '📢', requirement: 3 },
+    { id: 'darna-elite', name: 'Darna Élite', description: 'Gagné 25 000 points', icon: '👑', requirement: 25000 },
+  ];
+
   for (const badge of badges) {
-    await db.badge.upsert({
-      where: { id: badge.name.toLowerCase().replace(/\s+/g, '-') },
-      update: {},
-      create: { id: badge.name.toLowerCase().replace(/\s+/g, '-'), ...badge },
-    });
+    await db.badge.create({ data: badge });
   }
   console.log(`✅ Created ${badges.length} badges`);
 
-  // Create demo admin user
-  await db.user.upsert({
-    where: { email: 'admin@luxe.com' },
-    update: {},
-    create: {
-      email: 'admin@luxe.com',
-      name: 'Admin User',
+  // Admin user
+  await db.user.create({
+    data: {
+      email: 'admin@darna.dz',
+      name: 'Mehdi Admin',
       role: 'admin',
-      points: 2500,
-      level: 5,
+      points: 15000,
+      level: 8,
     },
   });
   console.log('✅ Created admin user');
 
-  console.log('🎉 Seed complete!');
+  // Demo customer
+  await db.user.create({
+    data: {
+      email: 'amina@email.com',
+      name: 'Amina Benali',
+      role: 'customer',
+      points: 3200,
+      level: 4,
+    },
+  });
+  console.log('✅ Created demo customer');
+
+  console.log('🎉 Seed complete — Darna is ready!');
 }
 
 seed()

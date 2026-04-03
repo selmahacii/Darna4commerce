@@ -1,15 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import {
-  Search, SlidersHorizontal, Grid3X3, List, ArrowUpDown, X,
+  Search, SlidersHorizontal, ArrowUpDown, X,
   Star, Heart, Share2, Truck, Shield, RotateCcw, ChevronRight,
-  ShoppingBag, Package, Award, TrendingUp, Users, DollarSign,
-  BarChart3, Bell, Settings, Boxes, Eye, Edit3, Trash2, Plus,
-  Download, ArrowUpRight, ArrowDownRight, Sparkles, Zap, Gift,
-  Crown, Target, Flame, LayoutGrid, Megaphone, FileText, Palette,
-  BoxSelect, Store, AlertTriangle, CheckCircle2, Clock, ChevronLeft, Trophy
+  ShoppingBag, Package, Award, TrendingUp, Users,
+  BarChart3, Settings, Eye, Edit3, Trash2, Plus,
+  Download, Sparkles, Zap, Gift,
+  Crown, Flame, LayoutGrid, FileText,
+  Store, CheckCircle2, Clock, ChevronLeft, Trophy,
+  HandMetal, TruckIcon, Menu, Globe, ChevronDown, BoxSelect,
+  Instagram, Facebook, Mail, Phone, MapPin,
+  CreditCard, Banknote, User, Map,
+  Home, Calendar, ArrowUpRight, Percent,
+  Wallet, Layers, Gem, BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,23 +26,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, type View } from '@/stores/app-store';
 import { useCartStore } from '@/stores/cart-store';
-import Navbar from '@/components/ecommerce/Navbar';
 import ProductCard from '@/components/ecommerce/ProductCard';
-import dynamic from 'next/dynamic';
-const ProductViewer3D = dynamic(() => import('@/components/three/ProductViewer3D'), {
-  ssr: false,
-  loading: () => <div className="h-[400px] md:h-[500px] w-full rounded-xl bg-gray-900 animate-pulse flex items-center justify-center text-gray-500 text-sm">Loading 3D viewer...</div>,
-});
+import CartDrawer from '@/components/ecommerce/CartDrawer';
 import ProductViewerFallback from '@/components/three/ProductViewerFallback';
 import { toast } from 'sonner';
-import React from 'react';
 
-// Types
+// Dynamic import for 3D viewer
+const ProductViewer3D = dynamic(() => import('@/components/three/ProductViewer3D'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[400px] md:h-[500px] w-full rounded-xl bg-charcoal/5 animate-pulse flex items-center justify-center text-muted-foreground text-sm">
+      Chargement de la vue 3D...
+    </div>
+  ),
+});
+
+// =============================================
+// TYPES
+// =============================================
 interface Product {
   id: string;
   name: string;
@@ -64,12 +75,464 @@ interface Category {
   name: string;
   slug: string;
   description?: string;
+  image?: string;
   _count?: { products: number };
 }
 
-// ===== HOME VIEW =====
+// =============================================
+// PRICE FORMATTING
+// =============================================
+function formatPrice(amount: number, currency: string): string {
+  if (currency === 'EUR') {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount * 0.007);
+  }
+  return amount.toLocaleString('fr-DZ') + ' DA';
+}
+
+const WILAYAS = [
+  '01 - Adrar','02 - Chlef','03 - Laghouat','04 - Oum El Bouaghi','05 - Batna',
+  '06 - B\u00e9ja\u00efa','07 - Biskra','08 - B\u00e9char','09 - Blida','10 - Bouira',
+  '11 - Tamanrasset','12 - T\u00e9bessa','13 - Tlemcen','14 - Tiaret','15 - Tizi Ouzou',
+  '16 - Alger','17 - Djelfa','18 - Jijel','19 - S\u00e9tif','20 - Sa\u00efda',
+  '21 - Skikda','22 - Sidi Bel Abb\u00e8s','23 - Annaba','24 - Guelma','25 - Constantine',
+  '26 - M\u00e9d\u00e9a','27 - Mostaganem','28 - M\'Sila','29 - Mascara','30 - Ouargla',
+  '31 - Oran','32 - El Bayadh','33 - Illizi','34 - Bordj Bou Arr\u00e9ridj','35 - Boumerd\u00e8s',
+  '36 - El Tarf','37 - Tindouf','38 - Tissemsilt','39 - El Oued','40 - Khenchela',
+  '41 - Souk Ahras','42 - Tipaza','43 - Mila','44 - A\u00efn Defla','45 - Na\u00e2ma',
+  '46 - A\u00efn T\u00e9mouchent','47 - Gharda\u00efa','48 - Relizane','49 - El M\'Ghair','50 - El Meniaa',
+  '51 - Ouled Djellal','52 - Bordj Badji Mokhtar','53 - B\u00e9ni Abb\u00e8s','54 - Timimoun','55 - Touggourt',
+  '56 - Djanet','57 - In Salah','58 - In Guezzam'
+];
+
+// =============================================
+// ZELLIGE LOGO SVG
+// =============================================
+function DarnaLogo({ className = 'w-9 h-9' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 40 40" className={className} fill="none">
+      <rect x="2" y="2" width="36" height="36" rx="8" fill="url(#logoGrad)" />
+      <path d="M20 6L32 14L32 26L20 34L8 26L8 14Z" fill="none" stroke="#FAF7F0" strokeWidth="1.5" />
+      <path d="M20 11L27 15.5L27 24.5L20 29L13 24.5L13 15.5Z" fill="#FAF7F0" opacity="0.3" />
+      <path d="M20 15L24 17.5L24 22.5L20 25L16 22.5L16 17.5Z" fill="#C4A35A" />
+      <circle cx="20" cy="20" r="2.5" fill="#FAF7F0" />
+      <defs>
+        <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+          <stop stopColor="#C75B39" />
+          <stop offset="1" stopColor="#A04828" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+// =============================================
+// DECORATIVE ZELLIGE PATTERN
+// =============================================
+function ZelligePattern({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 200 200" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <pattern id="zellige" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+        <path d="M20 8L32 20L20 32L8 20Z" fill="none" stroke="currentColor" strokeWidth="0.3" opacity="0.2" />
+      </pattern>
+      <rect width="200" height="200" fill="url(#zellige)" />
+    </svg>
+  );
+}
+
+// =============================================
+// ERROR BOUNDARY (simple)
+// =============================================
+import React from 'react';
+
+class ErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { fallback: React.ReactNode; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+// =============================================
+// NAVBAR
+// =============================================
+function DarnaNavbar() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [adminOpen, setAdminOpen] = useState(false);
+  const { view, setView, isAdmin, setAdmin, setCurrency, currency, filters, setFilters } = useAppStore();
+  const { toggleCart, getItemCount } = useCartStore();
+  const itemCount = getItemCount();
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Mobile menu/admin dropdown are closed in click handlers directly
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFilters({ search: searchQuery });
+    setView('catalog');
+    setIsSearchOpen(false);
+    setSearchQuery('');
+  };
+
+  const toggleCurrency = () => {
+    setCurrency(currency === 'DZD' ? 'EUR' : 'DZD');
+  };
+
+  const navLinks = [
+    { label: 'Boutique', view: 'catalog' as View },
+    { label: 'Nouveaut\u00e9s', view: 'catalog' as View, filter: { sortBy: 'newest' } },
+    { label: 'Fid\u00e9lit\u00e9', view: 'profile' as View },
+  ];
+
+  return (
+    <>
+      <motion.header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          isScrolled
+            ? 'bg-cream/90 backdrop-blur-xl shadow-md border-b border-terracotta/10'
+            : 'bg-transparent'
+        }`}
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 md:h-18">
+            {/* Logo */}
+            <button
+              onClick={() => setView('home')}
+              className="flex items-center gap-2.5 group"
+            >
+              <DarnaLogo className="w-9 h-9 group-hover:scale-105 transition-transform" />
+              <div className="hidden sm:block">
+                <span className="text-xl font-bold tracking-tight text-charcoal">
+                  Darna
+                </span>
+                <span className="block text-[10px] text-terracotta -mt-0.5 tracking-widest uppercase">
+                  \u062f\u0627\u0631\u0646\u0627
+                </span>
+              </div>
+            </button>
+
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => (
+                <button
+                  key={link.label}
+                  onClick={() => {
+                    if (link.filter) setFilters(link.filter);
+                    setView(link.view);
+                  }}
+                  className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    view === link.view
+                      ? 'text-terracotta bg-terracotta/8'
+                      : 'text-charcoal/70 hover:text-terracotta hover:bg-terracotta/5'
+                  }`}
+                >
+                  {link.label}
+                  {view === link.view && (
+                    <motion.div
+                      className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-terracotta rounded-full"
+                      layoutId="darnaNav"
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </button>
+              ))}
+
+              {/* Admin Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setAdminOpen(!adminOpen)}
+                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1 transition-all"
+                >
+                  <Settings className="w-4 h-4" />
+                  <ChevronDown className={`w-3 h-3 transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {adminOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-terracotta/10 overflow-hidden"
+                    >
+                      <button
+                        onClick={() => { setAdmin(!isAdmin); setView('admin'); setAdminOpen(false); }}
+                        className="w-full px-4 py-3 text-left text-sm text-charcoal/70 hover:bg-sand flex items-center gap-3 transition-colors"
+                      >
+                        <BarChart3 className="w-4 h-4 text-terracotta" />
+                        Tableau de bord
+                      </button>
+                      <button
+                        onClick={() => { setView('orders'); setAdminOpen(false); }}
+                        className="w-full px-4 py-3 text-left text-sm text-charcoal/70 hover:bg-sand flex items-center gap-3 transition-colors border-t border-terracotta/5"
+                      >
+                        <Package className="w-4 h-4 text-olive" />
+                        Mes Commandes
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </nav>
+
+            {/* Right Actions */}
+            <div className="flex items-center gap-1.5">
+              {/* Search */}
+              <AnimatePresence>
+                {isSearchOpen && (
+                  <motion.form
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 220, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    onSubmit={handleSearch}
+                    className="hidden sm:block overflow-hidden"
+                  >
+                    <Input
+                      type="text"
+                      placeholder="Rechercher un produit..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-9 text-sm bg-sand border-terracotta/10 focus:border-terracotta/30 rounded-xl"
+                      autoFocus
+                    />
+                  </motion.form>
+                )}
+              </AnimatePresence>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setIsSearchOpen(!isSearchOpen);
+                  if (isSearchOpen) setSearchQuery('');
+                }}
+                className="text-charcoal/60 hover:text-terracotta hover:bg-terracotta/5 rounded-xl"
+              >
+                {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+              </Button>
+
+              {/* Currency Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden sm:flex text-xs font-semibold text-charcoal/50 hover:text-terracotta hover:bg-terracotta/5 gap-1 rounded-xl"
+                onClick={toggleCurrency}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                {currency}
+              </Button>
+
+              {/* Cart */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleCart}
+                className="relative text-charcoal/60 hover:text-terracotta hover:bg-terracotta/5 rounded-xl"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                {itemCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-terracotta text-cream text-[10px] font-bold rounded-full flex items-center justify-center"
+                  >
+                    {itemCount}
+                  </motion.span>
+                )}
+              </Button>
+
+              {/* Mobile Menu */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden text-charcoal/60 hover:text-terracotta hover:bg-terracotta/5 rounded-xl"
+                onClick={() => setIsMobileOpen(!isMobileOpen)}
+              >
+                {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-16 left-0 right-0 z-40 bg-cream/95 backdrop-blur-xl border-b border-terracotta/10 md:hidden"
+          >
+            <div className="p-4 space-y-1">
+              {navLinks.map((link) => (
+                <button
+                  key={link.label}
+                  onClick={() => {
+                    if (link.filter) setFilters(link.filter);
+                    setView(link.view);
+                    setIsMobileOpen(false);
+                  }}
+                  className={`w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 transition-colors ${
+                    view === link.view
+                      ? 'text-terracotta bg-terracotta/8'
+                      : 'text-charcoal/70 hover:bg-sand'
+                  }`}
+                >
+                  {link.label}
+                </button>
+              ))}
+              <Separator className="my-2 bg-terracotta/10" />
+              <button
+                onClick={() => {
+                  setAdmin(!isAdmin); setView('admin'); setIsMobileOpen(false);
+                }}
+                className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Tableau de bord
+              </button>
+              <button
+                onClick={() => { setView('orders'); setIsMobileOpen(false); }}
+                className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
+              >
+                <Package className="w-4 h-4" />
+                Mes Commandes
+              </button>
+              <Separator className="my-2 bg-terracotta/10" />
+              <div className="flex items-center justify-between px-4 py-2">
+                <span className="text-xs text-charcoal/50">Devise</span>
+                <Button variant="outline" size="sm" className="h-7 text-xs rounded-lg" onClick={toggleCurrency}>
+                  {currency === 'DZD' ? 'DZD \u2192 EUR' : 'EUR \u2192 DZD'}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// =============================================
+// FOOTER
+// =============================================
+function DarnaFooter() {
+  const { setView } = useAppStore();
+  return (
+    <footer className="bg-charcoal text-cream/70 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+          {/* Brand */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <DarnaLogo className="w-9 h-9" />
+              <div>
+                <span className="text-xl font-bold text-cream">Darna</span>
+                <span className="block text-[10px] text-gold -mt-0.5 tracking-widest uppercase">
+                  \u062f\u0627\u0631\u0646\u0627
+                </span>
+              </div>
+            </div>
+            <p className="text-sm leading-relaxed mb-4">
+              L&apos;artisanat alg\u00e9rien, fait avec le c\u0153ur. Chaque pi\u00e8ce raconte une histoire de savoir-faire et de passion.
+            </p>
+            <div className="flex gap-3">
+              <button className="w-9 h-9 rounded-xl bg-cream/10 hover:bg-terracotta flex items-center justify-center transition-colors">
+                <Instagram className="w-4 h-4" />
+              </button>
+              <button className="w-9 h-9 rounded-xl bg-cream/10 hover:bg-terracotta flex items-center justify-center transition-colors">
+                <Facebook className="w-4 h-4" />
+              </button>
+              <button className="w-9 h-9 rounded-xl bg-cream/10 hover:bg-terracotta flex items-center justify-center transition-colors">
+                <Mail className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* La Boutique */}
+          <div>
+            <h4 className="text-cream font-semibold mb-4 text-sm">La Boutique</h4>
+            <div className="space-y-2.5 text-sm">
+              {[
+                { label: 'Tous les produits', action: () => setView('catalog') },
+                { label: 'Cuir & Artisanat', action: () => { useAppStore.getState().setFilters({ category: 'cuir-artisanat' }); setView('catalog'); } },
+                { label: 'Luminaires', action: () => { useAppStore.getState().setFilters({ category: 'luminaires' }); setView('catalog'); } },
+                { label: 'Textiles', action: () => { useAppStore.getState().setFilters({ category: 'textiles' }); setView('catalog'); } },
+              ].map((item) => (
+                <button key={item.label} onClick={item.action} className="block hover:text-gold transition-colors">
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notre Histoire */}
+          <div>
+            <h4 className="text-cream font-semibold mb-4 text-sm">Notre Histoire</h4>
+            <div className="space-y-2.5 text-sm">
+              <p className="hover:text-gold transition-colors cursor-pointer">\u00c0 propos de Darna</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Nos Artisans</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Engagement \u00e9thique</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Blog</p>
+            </div>
+          </div>
+
+          {/* Aide & Contact */}
+          <div>
+            <h4 className="text-cream font-semibold mb-4 text-sm">Aide & Contact</h4>
+            <div className="space-y-2.5 text-sm">
+              <p className="hover:text-gold transition-colors cursor-pointer">FAQ</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Livraison & Retours</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Guide des tailles</p>
+            </div>
+            <div className="mt-4 space-y-2 text-sm">
+              <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-gold" /> +213 555 123 456</p>
+              <p className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-gold" /> bonjour@darna.dz</p>
+              <p className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-gold" /> Alger, Alg\u00e9rie</p>
+            </div>
+          </div>
+        </div>
+
+        <Separator className="bg-cream/10 mb-6" />
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-cream/40">
+          <p>\u00a9 2025 Darna (\u062f\u0627\u0631\u0646\u0627). Fait avec amour en Alg\u00e9rie.</p>
+          <div className="flex gap-6">
+            <p className="hover:text-cream/70 cursor-pointer transition-colors">Confidentialit\u00e9</p>
+            <p className="hover:text-cream/70 cursor-pointer transition-colors">CGV</p>
+            <p className="hover:text-cream/70 cursor-pointer transition-colors">Cookies</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// =============================================
+// HOME VIEW
+// =============================================
 function HomeView() {
-  const { setView, selectProduct } = useAppStore();
+  const { setView } = useAppStore();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,120 +548,143 @@ function HomeView() {
     }).catch(() => setLoading(false));
   }, []);
 
+  const categoryIcons: Record<string, React.ElementType> = {
+    'cuir-artisanat': HandMetal,
+    'luminaires': Sparkles,
+    'textiles': Layers,
+    'cuisine': Home,
+    'bijoux': Gem,
+  };
+
   return (
     <div className="min-h-screen">
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-          <div className="absolute inset-0 bg-[url('/images/products/hero.png')] bg-cover bg-center opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+      {/* ===== HERO ===== */}
+      <section className="relative overflow-hidden min-h-[85vh] flex items-center">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[url('/images/products/hero.png')] bg-cover bg-center" />
+          <div className="absolute inset-0 bg-gradient-to-r from-charcoal/80 via-charcoal/50 to-terracotta/30" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-44">
+        {/* Decorative zellige overlay */}
+        <div className="absolute inset-0 opacity-5">
+          <ZelligePattern className="w-full h-full text-cream" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-40">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.9, ease: 'easeOut' }}
             className="max-w-2xl"
           >
-            <Badge className="mb-4 bg-amber-500/20 text-amber-400 border-amber-500/30 backdrop-blur-sm">
-              <Sparkles className="w-3 h-3 mr-1" /> New Collection 2025
+            {/* Arabic decorative element */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="flex items-center gap-3 mb-6"
+            >
+              <div className="h-px w-12 bg-gold/60" />
+              <span className="text-gold/80 text-sm tracking-[0.3em]">\u062f\u0627\u0631\u0646\u0627</span>
+              <div className="h-px w-12 bg-gold/60" />
+            </motion.div>
+
+            <Badge className="mb-6 bg-terracotta/20 text-terracotta-light border-terracotta/30 backdrop-blur-sm px-4 py-1.5 rounded-full">
+              <Sparkles className="w-3 h-3 mr-1.5" />
+              Collection Artisanale 2025
             </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
-              Premium Products,
-              <br />
-              <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-                Curated for You
+
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-cream leading-tight mb-6">
+              Bienvenue chez{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-terracotta-light via-gold to-terracotta-light">
+                Darna
               </span>
             </h1>
-            <p className="text-lg text-gray-300 mb-8 max-w-lg">
-              Discover our exclusive collection of luxury goods with 3D visualization, real-time customization, and smart recommendations.
+
+            <p className="text-lg md:text-xl text-cream/80 mb-4 max-w-lg leading-relaxed">
+              D\u00e9couvrez l&apos;\u00e2me de l&apos;artisanat alg\u00e9rien \u2014 des pi\u00e8ces uniques fa\u00e7onn\u00e9es \u00e0 la main par nos artisans, avec tout l&apos;amour et le savoir-faire transmis de g\u00e9n\u00e9ration en g\u00e9n\u00e9ration.
             </p>
-            <div className="flex flex-wrap gap-3">
+
+            <p className="text-sm text-cream/50 italic mb-8">
+              &laquo; L&apos;artisanat alg\u00e9rien, fait avec le c\u0153ur &raquo;
+            </p>
+
+            <div className="flex flex-wrap gap-4">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg shadow-amber-500/25 px-8"
+                className="bg-gradient-to-r from-terracotta to-terracotta-dark hover:from-terracotta-dark hover:to-terracotta text-cream shadow-lg shadow-terracotta/25 px-8 h-12 text-base rounded-xl transition-all duration-300"
                 onClick={() => setView('catalog')}
               >
-                Shop Now <ChevronRight className="w-4 h-4 ml-1" />
+                D\u00e9couvrir la Boutique
+                <ChevronRight className="w-4 h-4 ml-1.5" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm px-8"
-                onClick={() => setView('admin')}
+                className="border-cream/25 text-cream hover:bg-cream/10 backdrop-blur-sm px-8 h-12 text-base rounded-xl transition-all duration-300"
+                onClick={() => {
+                  document.getElementById('story-section')?.scrollIntoView({ behavior: 'smooth' });
+                }}
               >
-                Admin Panel
+                Notre Histoire
               </Button>
+            </div>
+          </motion.div>
+
+          {/* Decorative corner */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 1 }}
+            className="absolute bottom-10 right-10 hidden lg:block"
+          >
+            <div className="w-32 h-32 border border-gold/20 rounded-full flex items-center justify-center">
+              <div className="w-20 h-20 border border-gold/15 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 rotate-45 border border-gold/25" />
+              </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-800/50">
+      {/* ===== POURQUOI DARNA ===== */}
+      <section className="py-20 bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { icon: BoxSelect, title: '3D Preview', desc: 'View products in 3D' },
-              { icon: Palette, title: 'Customize', desc: 'Colors & materials' },
-              { icon: Truck, title: 'Free Shipping', desc: 'Orders over $500' },
-              { icon: Shield, title: 'Secure', desc: 'Encrypted payments' },
-            ].map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * i }}
-                className="flex items-center gap-3 p-4"
-              >
-                <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                  <f.icon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">{f.title}</p>
-                  <p className="text-xs text-muted-foreground">{f.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <span className="text-terracotta text-sm font-medium tracking-wider uppercase">Nos Valeurs</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-charcoal mt-2">
+              Pourquoi <span className="text-terracotta">Darna</span> ?
+            </h2>
+            <p className="text-charcoal/60 mt-3 max-w-lg mx-auto">
+              Parce que chaque pi\u00e8ce m\u00e9rite d&apos;\u00eatre unique, chaque artisan m\u00e9rite d&apos;\u00eatre reconnu.
+            </p>
+          </motion.div>
 
-      {/* Categories */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-bold">Categories</h2>
-              <p className="text-muted-foreground">Browse by category</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {categories.map((cat, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: HandMetal, title: 'Fait Main', desc: 'Chaque pi\u00e8ce est unique, fa\u00e7onn\u00e9e avec patience par nos artisans', color: 'terracotta' },
+              { icon: Heart, title: 'Artisans Alg\u00e9riens', desc: 'Nous connaissons chaque maker et son histoire personnelle', color: 'gold' },
+              { icon: Award, title: 'Qualit\u00e9 Premium', desc: 'Aucun compromis sur la mati\u00e8re et la finition de nos produits', color: 'olive' },
+              { icon: Truck, title: 'Livraison 58 Wilayas', desc: 'Nous livrons partout en Alg\u00e9rie, avec soin et rapidit\u00e9', color: 'terracotta-dark' },
+            ].map((item, i) => (
               <motion.div
-                key={cat.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * i }}
+                key={item.title}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 * i, duration: 0.5 }}
               >
-                <Card
-                  className="group cursor-pointer border-0 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
-                  onClick={() => {
-                    useAppStore.getState().setFilters({ category: cat.slug });
-                    setView('catalog');
-                  }}
-                >
-                  <CardContent className="p-6 flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                      {cat.slug === 'electronics' && <Zap className="w-7 h-7 text-amber-600" />}
-                      {cat.slug === 'furniture' && <LayoutGrid className="w-7 h-7 text-amber-600" />}
-                      {cat.slug === 'accessories' && <Gift className="w-7 h-7 text-amber-600" />}
+                <Card className="group border-0 bg-white hover:shadow-xl transition-all duration-500 rounded-2xl h-full">
+                  <CardContent className="p-6 text-center">
+                    <div className={`w-16 h-16 rounded-2xl bg-${item.color}/10 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-500`}>
+                      <item.icon className={`w-8 h-8 text-${item.color}`} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold group-hover:text-amber-600 transition-colors">{cat.name}</h3>
-                      <p className="text-sm text-muted-foreground">{cat._count?.products || 0} products</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground ml-auto group-hover:translate-x-1 transition-transform" />
+                    <h3 className="font-bold text-charcoal text-lg mb-2">{item.title}</h3>
+                    <p className="text-sm text-charcoal/55 leading-relaxed">{item.desc}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -207,23 +693,79 @@ function HomeView() {
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-800/50">
+      {/* ===== CATEGORIES ===== */}
+      <section className="py-20 bg-sand/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex items-center justify-between mb-10"
+          >
             <div>
-              <h2 className="text-2xl font-bold">Featured Products</h2>
-              <p className="text-muted-foreground">Handpicked for you</p>
+              <span className="text-terracotta text-sm font-medium tracking-wider uppercase">Explorer</span>
+              <h2 className="text-3xl font-bold text-charcoal mt-1">Nos Cat\u00e9gories</h2>
             </div>
-            <Button variant="ghost" onClick={() => setView('catalog')}>
-              View All <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {categories.map((cat, i) => {
+              const Icon = categoryIcons[cat.slug] || Store;
+              return (
+                <motion.div
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.08 * i, duration: 0.4 }}
+                >
+                  <Card
+                    className="group cursor-pointer border-0 bg-white hover:shadow-lg hover:shadow-terracotta/5 hover:-translate-y-1 transition-all duration-500 rounded-2xl overflow-hidden h-full"
+                    onClick={() => {
+                      useAppStore.getState().setFilters({ category: cat.slug });
+                      setView('catalog');
+                    }}
+                  >
+                    <CardContent className="p-6 flex flex-col items-center text-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-terracotta/8 flex items-center justify-center group-hover:bg-terracotta/15 group-hover:scale-110 transition-all duration-500">
+                        <Icon className="w-7 h-7 text-terracotta" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-charcoal group-hover:text-terracotta transition-colors">{cat.name}</h3>
+                        <p className="text-xs text-charcoal/45 mt-0.5">{cat._count?.products || 0} produits</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
           </div>
+        </div>
+      </section>
+
+      {/* ===== FEATURED PRODUCTS ===== */}
+      <section className="py-20 bg-cream">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex items-center justify-between mb-10"
+          >
+            <div>
+              <span className="text-terracotta text-sm font-medium tracking-wider uppercase">S\u00e9lection</span>
+              <h2 className="text-3xl font-bold text-charcoal mt-1">Produits Vedettes</h2>
+            </div>
+            <Button variant="ghost" className="text-terracotta hover:text-terracotta-dark hover:bg-terracotta/5 rounded-xl" onClick={() => setView('catalog')}>
+              Voir tout <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </motion.div>
+
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-square rounded-xl" />
+                  <Skeleton className="aspect-square rounded-2xl" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
                 </div>
@@ -239,101 +781,103 @@ function HomeView() {
         </div>
       </section>
 
-      {/* Rewards CTA */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="border-0 bg-gradient-to-r from-amber-500 to-orange-600 overflow-hidden">
-            <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-6">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <Crown className="w-6 h-6 text-white" />
-                  <Badge className="bg-white/20 text-white border-none">Loyalty Program</Badge>
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Earn Points, Get Rewards</h2>
-                <p className="text-amber-100 mb-6">
-                  Every purchase earns you points. Unlock badges, get exclusive discounts, and climb the leaderboard.
-                </p>
-                <Button size="lg" variant="secondary" className="shadow-lg" onClick={() => setView('profile')}>
-                  View Rewards <Award className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-              <div className="flex gap-4">
-                {[
-                  { icon: Sparkles, label: '2,500+ Points', desc: 'Earn per order' },
-                  { icon: Flame, label: '6 Badges', desc: 'To unlock' },
-                  { icon: Trophy, label: 'Leaderboard', desc: 'Compete' },
-                ].map((item, i) => (
-                  <div key={i} className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-                    <item.icon className="w-8 h-8 text-white mx-auto mb-2" />
-                    <p className="text-sm font-semibold text-white">{item.label}</p>
-                    <p className="text-xs text-amber-100">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      {/* ===== TESTIMONIAL / STORY SECTION ===== */}
+      <section id="story-section" className="py-20 bg-sand/50 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.03]">
+          <ZelligePattern className="w-full h-full text-charcoal" />
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="text-center"
+          >
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <div className="h-px w-16 bg-gold/40" />
+              <DarnaLogo className="w-10 h-10 opacity-40" />
+              <div className="h-px w-16 bg-gold/40" />
+            </div>
+
+            <blockquote className="text-xl md:text-2xl lg:text-3xl text-charcoal/80 font-light leading-relaxed italic mb-8">
+              &laquo; L&apos;artisanat n&apos;est pas qu&apos;un m\u00e9tier \u2014 c&apos;est un h\u00e9ritage vivant qui relie nos mains \u00e0 celles de nos anc\u00eatres. Chez Darna, chaque tresse, chaque point de couture, chaque coup de ciseau porte en lui la m\u00e9moire de notre terre. &raquo;
+            </blockquote>
+
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-12 h-0.5 bg-terracotta/30 rounded-full" />
+              <p className="text-sm text-charcoal/50 font-medium">
+                Amira B. \u2014 Fondatrice, Darna
+              </p>
+              <div className="w-12 h-0.5 bg-terracotta/30 rounded-full" />
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
+      {/* ===== LOYALTY CTA ===== */}
+      <section className="py-20 bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">L</span>
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Card className="border-0 bg-gradient-to-r from-terracotta via-terracotta to-terracotta-dark overflow-hidden rounded-3xl relative">
+              <div className="absolute inset-0 opacity-10">
+                <ZelligePattern className="w-full h-full text-cream" />
+              </div>
+              <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 relative">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Crown className="w-6 h-6 text-gold" />
+                    <Badge className="bg-cream/20 text-cream border-none rounded-full">Programme Fid\u00e9lit\u00e9</Badge>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-cream mb-3">
+                    Gagnez des points, recevez des r\u00e9compenses
+                  </h2>
+                  <p className="text-cream/80 mb-6 max-w-md leading-relaxed">
+                    Chaque achat vous rapporte des points. D\u00e9bloquez des badges, obtenez des r\u00e9ductions exclusives et gravitez dans le classement de notre communaut\u00e9.
+                  </p>
+                  <Button
+                    size="lg"
+                    className="bg-cream text-terracotta hover:bg-cream/90 shadow-lg rounded-xl font-semibold transition-all duration-300"
+                    onClick={() => setView('profile')}
+                  >
+                    D\u00e9couvrir les r\u00e9compenses
+                    <Award className="w-4 h-4 ml-2" />
+                  </Button>
                 </div>
-                <span className="text-white font-bold">LUXESTORE</span>
-              </div>
-              <p className="text-sm">Premium products curated for the modern lifestyle.</p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-3 text-sm">Shop</h4>
-              <div className="space-y-2 text-sm">
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">All Products</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Electronics</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Furniture</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Accessories</p>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-3 text-sm">Support</h4>
-              <div className="space-y-2 text-sm">
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Help Center</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Shipping</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Returns</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Contact</p>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-3 text-sm">Company</h4>
-              <div className="space-y-2 text-sm">
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">About Us</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Careers</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Blog</p>
-                <p className="hover:text-amber-400 cursor-pointer transition-colors">Press</p>
-              </div>
-            </div>
-          </div>
-          <Separator className="bg-gray-800 mb-6" />
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
-            <p>2025 LUXESTORE. All rights reserved.</p>
-            <div className="flex gap-4">
-              <p className="hover:text-amber-400 cursor-pointer transition-colors">Privacy</p>
-              <p className="hover:text-amber-400 cursor-pointer transition-colors">Terms</p>
-              <p className="hover:text-amber-400 cursor-pointer transition-colors">Cookies</p>
-            </div>
-          </div>
+                <div className="flex gap-4 flex-wrap justify-center">
+                  {[
+                    { icon: Sparkles, label: '2 500+ Points', desc: 'Gagn\u00e9s par commande' },
+                    { icon: Flame, label: '6 Badges', desc: '\u00c0 d\u00e9bloquer' },
+                    { icon: Trophy, label: 'Classement', desc: 'Montez en grade' },
+                  ].map((item) => (
+                    <div key={item.label} className="text-center p-5 bg-cream/10 rounded-2xl backdrop-blur-sm min-w-[120px]">
+                      <item.icon className="w-8 h-8 text-gold mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-cream">{item.label}</p>
+                      <p className="text-xs text-cream/70 mt-0.5">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
-      </footer>
+      </section>
+
+      <DarnaFooter />
     </div>
   );
 }
 
-// ===== CATALOG VIEW =====
+// =============================================
+// CATALOG VIEW
+// =============================================
 function CatalogView() {
   const { filters, setFilters, resetFilters } = useAppStore();
+  const { currency } = useAppStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [total, setTotal] = useState(0);
@@ -341,33 +885,38 @@ function CatalogView() {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        search: filters.search,
-        category: filters.category,
-        minPrice: String(filters.minPrice),
-        maxPrice: String(filters.maxPrice),
-        sortBy: filters.sortBy,
-        page: String(page),
-        limit: '12',
-      });
-      const res = await fetch(`/api/products?${params}`);
-      const data = await res.json();
-      setProducts(data.products || []);
-      setTotal(data.total || 0);
-    } catch {}
-    setLoading(false);
-  }, [filters, page]);
-
   useEffect(() => {
     fetch('/api/categories').then(r => r.json()).then(setCategories).catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetchProducts().catch(() => {});
-  }, [fetchProducts]);
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          search: filters.search,
+          category: filters.category,
+          minPrice: String(filters.minPrice),
+          maxPrice: String(filters.maxPrice),
+          sortBy: filters.sortBy,
+          page: String(page),
+          limit: '12',
+        });
+        const res = await fetch(`/api/products?${params}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setProducts(data.products || []);
+          setTotal(data.total || 0);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [filters, page]);
 
   const activeFilterCount = [
     filters.search,
@@ -376,48 +925,57 @@ function CatalogView() {
   ].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-20 bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-charcoal/50 mb-6">
+          <button onClick={() => useAppStore.getState().setView('home')} className="hover:text-terracotta transition-colors">
+            Accueil
+          </button>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-charcoal font-medium">Boutique</span>
+        </div>
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold">Shop All Products</h1>
-            <p className="text-muted-foreground">{total} products found</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-charcoal">La Boutique</h1>
+            <p className="text-charcoal/50 mt-1">{total} produits trouv\u00e9s</p>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
               <Input
-                placeholder="Search..."
+                placeholder="Rechercher..."
                 value={filters.search}
                 onChange={(e) => setFilters({ search: e.target.value })}
-                className="pl-9"
+                className="pl-9 bg-white border-terracotta/10 focus:border-terracotta/30 rounded-xl"
               />
             </div>
             <Button
               variant="outline"
-              className="relative"
+              className="relative border-terracotta/15 hover:border-terracotta/30 hover:bg-terracotta/5 rounded-xl"
               onClick={() => setShowFilters(!showFilters)}
             >
               <SlidersHorizontal className="w-4 h-4 mr-2" />
-              Filters
+              Filtres
               {activeFilterCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-terracotta text-cream text-[10px] rounded-full flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
             </Button>
             <Select value={filters.sortBy} onValueChange={(v) => setFilters({ sortBy: v as typeof filters.sortBy })}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40 border-terracotta/15 rounded-xl">
                 <ArrowUpDown className="w-4 h-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                <SelectItem value="popular">Most Popular</SelectItem>
-                <SelectItem value="rating">Top Rated</SelectItem>
+                <SelectItem value="newest">Plus r\u00e9cents</SelectItem>
+                <SelectItem value="price-asc">Prix croissant</SelectItem>
+                <SelectItem value="price-desc">Prix d\u00e9croissant</SelectItem>
+                <SelectItem value="popular">Plus populaires</SelectItem>
+                <SelectItem value="rating">Mieux not\u00e9s</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -429,55 +987,57 @@ function CatalogView() {
             {showFilters && (
               <motion.aside
                 initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 256 }}
+                animate={{ opacity: 1, width: 260 }}
                 exit={{ opacity: 0, width: 0 }}
                 className="hidden lg:block flex-shrink-0 overflow-hidden"
               >
-                <Card className="border-0 shadow-sm sticky top-24">
+                <Card className="border-0 shadow-sm sticky top-24 bg-white rounded-2xl">
                   <CardContent className="p-6 space-y-6">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">Filters</h3>
-                      <Button variant="ghost" size="sm" onClick={resetFilters}>
-                        <X className="w-3 h-3 mr-1" /> Clear
+                      <h3 className="font-semibold text-charcoal">Filtres</h3>
+                      <Button variant="ghost" size="sm" className="text-terracotta hover:text-terracotta-dark hover:bg-terracotta/5 rounded-lg" onClick={resetFilters}>
+                        <X className="w-3 h-3 mr-1" /> Effacer
                       </Button>
                     </div>
 
-                    {/* Category */}
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">Category</Label>
-                      <div className="space-y-2">
+                      <Label className="text-sm font-medium text-charcoal">Cat\u00e9gorie</Label>
+                      <div className="space-y-1.5">
                         <button
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.category === 'all' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 font-medium' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-all ${
+                            filters.category === 'all' ? 'bg-terracotta/10 text-terracotta font-medium' : 'text-charcoal/60 hover:bg-sand'
+                          }`}
                           onClick={() => setFilters({ category: 'all' })}
                         >
-                          All Categories
+                          Toutes les cat\u00e9gories
                         </button>
                         {categories.map((cat) => (
                           <button
                             key={cat.id}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${filters.category === cat.slug ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 font-medium' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-sm flex items-center justify-between transition-all ${
+                              filters.category === cat.slug ? 'bg-terracotta/10 text-terracotta font-medium' : 'text-charcoal/60 hover:bg-sand'
+                            }`}
                             onClick={() => setFilters({ category: cat.slug })}
                           >
                             {cat.name}
-                            <span className="text-muted-foreground text-xs">{cat._count?.products || 0}</span>
+                            <span className="text-xs text-charcoal/40">{cat._count?.products || 0}</span>
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    {/* Price Range */}
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">Price Range</Label>
+                      <Label className="text-sm font-medium text-charcoal">Budget</Label>
                       <Slider
                         min={0}
-                        max={5000}
-                        step={50}
+                        max={50000}
+                        step={500}
                         value={[filters.minPrice, filters.maxPrice]}
                         onValueChange={([min, max]) => setFilters({ minPrice: min, maxPrice: max })}
                       />
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>${filters.minPrice}</span>
-                        <span>${filters.maxPrice}</span>
+                      <div className="flex items-center justify-between text-sm text-charcoal/50">
+                        <span>{formatPrice(filters.minPrice, currency)}</span>
+                        <span>{formatPrice(filters.maxPrice, currency)}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -492,7 +1052,7 @@ function CatalogView() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="space-y-3">
-                    <Skeleton className="aspect-square rounded-xl" />
+                    <Skeleton className="aspect-square rounded-2xl" />
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-6 w-1/3" />
@@ -501,12 +1061,14 @@ function CatalogView() {
               </div>
             ) : products.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                  <Search className="w-10 h-10 text-gray-300" />
+                <div className="w-20 h-20 rounded-full bg-sand flex items-center justify-center mb-4">
+                  <Search className="w-10 h-10 text-charcoal/20" />
                 </div>
-                <h3 className="text-lg font-semibold mb-1">No products found</h3>
-                <p className="text-muted-foreground mb-4">Try adjusting your filters or search query</p>
-                <Button variant="outline" onClick={resetFilters}>Clear Filters</Button>
+                <h3 className="text-lg font-semibold text-charcoal mb-1">Aucun produit trouv\u00e9</h3>
+                <p className="text-charcoal/50 mb-4">Essayez d&apos;ajuster vos filtres ou votre recherche</p>
+                <Button variant="outline" className="border-terracotta/20 text-terracotta hover:bg-terracotta/5 rounded-xl" onClick={resetFilters}>
+                  Effacer les filtres
+                </Button>
               </div>
             ) : (
               <>
@@ -515,14 +1077,13 @@ function CatalogView() {
                     <ProductCard key={product.id} product={product} index={i} />
                   ))}
                 </div>
-                {/* Pagination */}
                 {total > 12 && (
                   <div className="flex justify-center mt-10 gap-2">
-                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} className="border-terracotta/15 hover:bg-terracotta/5 rounded-xl">
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    <span className="px-4 py-2 text-sm">Page {page} of {Math.ceil(total / 12)}</span>
-                    <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 12)} onClick={() => setPage(page + 1)}>
+                    <span className="px-4 py-2 text-sm text-charcoal/60">Page {page} sur {Math.ceil(total / 12)}</span>
+                    <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 12)} onClick={() => setPage(page + 1)} className="border-terracotta/15 hover:bg-terracotta/5 rounded-xl">
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>
@@ -536,10 +1097,13 @@ function CatalogView() {
   );
 }
 
-// ===== PRODUCT DETAIL VIEW =====
+// =============================================
+// PRODUCT DETAIL VIEW
+// =============================================
 function ProductDetailView() {
   const { selectedProductId, goBack } = useAppStore();
   const { addItem, openCart } = useCartStore();
+  const { currency } = useAppStore();
   const [product, setProduct] = useState<Product | null>(null);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -548,34 +1112,41 @@ function ProductDetailView() {
   const [selectedMaterial, setSelectedMaterial] = useState('');
   const [engraving, setEngraving] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [showViewer, setShowViewer] = useState(true);
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
   useEffect(() => {
     if (!selectedProductId) return;
     let cancelled = false;
-    setLoading(true);
-    Promise.all([
-      fetch(`/api/products/${selectedProductId}`).then(r => r.json()),
-      fetch(`/api/ai/recommendations?productId=${selectedProductId}`).then(r => r.json()),
-    ]).then(([prodData, recData]) => {
-      if (!cancelled) {
-        setProduct(prodData.product);
-        setRecommendations(recData.recommendations || []);
-        if (prodData.product) {
-          const colors = JSON.parse(prodData.product.colors || '[]');
-          const materials = JSON.parse(prodData.product.materials || '[]');
-          if (colors.length > 0) setSelectedColor(colors[0]);
-          if (materials.length > 0) setSelectedMaterial(materials[0]);
+    const load = async () => {
+      try {
+        const [prodRes, recRes] = await Promise.all([
+          fetch(`/api/products/${selectedProductId}`).then(r => r.json()),
+          fetch(`/api/ai/recommendations?productId=${selectedProductId}`).then(r => r.json()),
+        ]);
+        if (!cancelled) {
+          setProduct(prodRes.product);
+          setRecommendations(recRes.recommendations || []);
+          if (prodRes.product) {
+            const colors = JSON.parse(prodRes.product.colors || '[]');
+            const materials = JSON.parse(prodRes.product.materials || '[]');
+            if (colors.length > 0) setSelectedColor(colors[0]);
+            if (materials.length > 0) setSelectedMaterial(materials[0]);
+          }
         }
-        setLoading(false);
+      } catch {
+        // error handled silently
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }).catch(() => { if (!cancelled) setLoading(false); });
+    };
+    setLoading(true);
+    load();
     return () => { cancelled = true; };
   }, [selectedProductId]);
 
   if (loading) {
     return (
-      <div className="pt-20 min-h-screen">
+      <div className="pt-20 min-h-screen bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             <Skeleton className="aspect-square rounded-2xl" />
@@ -594,10 +1165,10 @@ function ProductDetailView() {
 
   if (!product) {
     return (
-      <div className="pt-20 min-h-screen flex items-center justify-center">
+      <div className="pt-20 min-h-screen flex items-center justify-center bg-cream">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Product not found</h2>
-          <Button onClick={() => goBack()}>Go Back</Button>
+          <h2 className="text-2xl font-bold text-charcoal mb-2">Produit introuvable</h2>
+          <Button onClick={goBack} className="bg-terracotta hover:bg-terracotta-dark text-cream rounded-xl">Retour</Button>
         </div>
       </div>
     );
@@ -611,10 +1182,10 @@ function ProductDetailView() {
   const productType = product.slug.split('-')[0] === 'aura' ? 'headphones'
     : product.slug.includes('chair') ? 'chair'
     : product.slug.includes('watch') ? 'watch'
-    : product.slug.includes('lamp') ? 'lamp'
-    : product.slug.includes('backpack') ? 'backpack'
+    : product.slug.includes('lamp') || product.slug.includes('lantern') ? 'lamp'
+    : product.slug.includes('backpack') || product.slug.includes('basket') ? 'backpack'
     : product.slug.includes('speaker') || product.slug.includes('echo') ? 'speaker'
-    : product.slug.includes('vase') ? 'vase'
+    : product.slug.includes('vase') || product.slug.includes('bokhour') ? 'vase'
     : product.slug.includes('ultrabook') || product.slug.includes('vertex') ? 'ultrabook'
     : 'headphones';
 
@@ -630,72 +1201,79 @@ function ProductDetailView() {
       engraving,
     });
     openCart();
-    toast.success('Added to cart!', {
+    toast.success('Ajout\u00e9 au panier !', {
       description: `${quantity}x ${product.name}`,
     });
   };
 
   return (
-    <div className="pt-20 min-h-screen">
+    <div className="pt-20 min-h-screen bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <button onClick={goBack} className="hover:text-amber-600 transition-colors">Shop</button>
+        <div className="flex items-center gap-2 text-sm text-charcoal/50 mb-8">
+          <button onClick={() => useAppStore.getState().setView('home')} className="hover:text-terracotta transition-colors">
+            Accueil
+          </button>
           <ChevronRight className="w-3 h-3" />
-          {product.category && <span className="hover:text-amber-600 cursor-pointer transition-colors">{product.category.name}</span>}
+          <button onClick={goBack} className="hover:text-terracotta transition-colors">
+            Boutique
+          </button>
           <ChevronRight className="w-3 h-3" />
-          <span className="text-foreground font-medium truncate max-w-48">{product.name}</span>
+          {product.category && (
+            <>
+              <span className="hover:text-terracotta cursor-pointer transition-colors">{product.category.name}</span>
+              <ChevronRight className="w-3 h-3" />
+            </>
+          )}
+          <span className="text-charcoal font-medium truncate max-w-48">{product.name}</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Left: 3D Viewer / Image */}
           <div className="space-y-4">
-            {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="3d">
-                  <BoxSelect className="w-4 h-4 mr-1.5" /> 3D View
+              <TabsList className="mb-4 bg-sand rounded-xl">
+                <TabsTrigger value="3d" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
+                  <BoxSelect className="w-4 h-4 mr-1.5" /> Vue 3D
                 </TabsTrigger>
-                <TabsTrigger value="photo">
+                <TabsTrigger value="photo" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
                   <Eye className="w-4 h-4 mr-1.5" /> Photos
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="3d">
-                <div className="relative">
-                  {showViewer ? (
-                    <ErrorBoundary fallback={<ProductViewerFallback productType={productType} color={selectedColor} material={selectedMaterial} engraving={engraving} />}>
-                      <ProductViewer3D
-                        productName={product.name}
-                        productType={productType}
-                        color={selectedColor}
-                        material={selectedMaterial}
-                        engraving={engraving}
-                        className="h-[400px] md:h-[500px] w-full"
-                      />
-                    </ErrorBoundary>
-                  ) : (
-                    <ProductViewerFallback productType={productType} color={selectedColor} material={selectedMaterial} engraving={engraving} className="h-[400px] md:h-[500px] w-full" />
-                  )}
+                <div className="relative rounded-2xl overflow-hidden">
+                  <ErrorBoundary
+                    fallback={
+                      <ProductViewerFallback productType={productType} color={selectedColor} material={selectedMaterial} engraving={engraving} />
+                    }
+                  >
+                    <ProductViewer3D
+                      productName={product.name}
+                      productType={productType}
+                      color={selectedColor}
+                      material={selectedMaterial}
+                      engraving={engraving}
+                      className="h-[400px] md:h-[500px] w-full"
+                    />
+                  </ErrorBoundary>
                 </div>
               </TabsContent>
 
               <TabsContent value="photo">
-                <div className="aspect-square rounded-2xl bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                <div className="aspect-square rounded-2xl bg-sand overflow-hidden">
                   {images[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={images[0]} alt={product.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                      No image available
+                    <div className="w-full h-full flex items-center justify-center text-charcoal/30">
+                      Aucune image disponible
                     </div>
                   )}
                 </div>
                 {images.length > 1 && (
                   <div className="flex gap-3 mt-3">
                     {images.map((img, i) => (
-                      <div key={i} className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer ring-2 ring-amber-500">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <div key={i} className="w-20 h-20 rounded-xl overflow-hidden bg-sand cursor-pointer ring-2 ring-terracotta/20 hover:ring-terracotta transition-all">
                         <img src={img} alt="" className="w-full h-full object-cover" />
                       </div>
                     ))}
@@ -709,45 +1287,59 @@ function ProductDetailView() {
           <div className="space-y-6">
             <div>
               {product.category && (
-                <Badge variant="secondary" className="mb-2">{product.category.name}</Badge>
+                <Badge variant="secondary" className="mb-3 bg-terracotta/10 text-terracotta border-terracotta/20 rounded-full">
+                  {product.category.name}
+                </Badge>
               )}
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">{product.name}</h1>
-              <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-bold text-charcoal mb-3">{product.name}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+                    <Star key={i} className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'fill-gold text-gold' : 'text-charcoal/15'}`} />
                   ))}
                 </div>
-                <span className="text-sm font-medium">{product.rating}</span>
-                <span className="text-sm text-muted-foreground">({product.reviewCount} reviews)</span>
+                <span className="text-sm font-medium text-charcoal">{product.rating}</span>
+                <span className="text-sm text-charcoal/50">({product.reviewCount} avis)</span>
+                {product.isNew && (
+                  <Badge className="bg-olive/10 text-olive border-olive/20 rounded-full">Nouveau</Badge>
+                )}
                 {product.stock <= 10 && product.stock > 0 && (
-                  <Badge variant="destructive" className="text-[10px]">Only {product.stock} left</Badge>
+                  <Badge variant="destructive" className="text-[10px] rounded-full">
+                    Plus que {product.stock} en stock
+                  </Badge>
                 )}
               </div>
             </div>
 
-            <Separator />
+            <Separator className="bg-terracotta/10" />
 
             {/* Price */}
             <div className="flex items-end gap-3">
-              <span className="text-3xl font-bold">${product.price.toFixed(2)}</span>
+              <span className="text-3xl font-bold text-charcoal">{formatPrice(product.price, currency)}</span>
               {product.comparePrice && (
                 <>
-                  <span className="text-lg text-muted-foreground line-through">${product.comparePrice.toFixed(2)}</span>
-                  <Badge className="bg-red-100 text-red-600 border-none">-{discount}%</Badge>
+                  <span className="text-lg text-charcoal/40 line-through">{formatPrice(product.comparePrice, currency)}</span>
+                  <Badge className="bg-terracotta/10 text-terracotta border-terracotta/20 rounded-full">-{discount}%</Badge>
                 </>
               )}
             </div>
 
+            {/* Description */}
+            <p className="text-sm text-charcoal/60 leading-relaxed">
+              {product.shortDesc || product.description.slice(0, 160) + '...'}
+            </p>
+
             {/* Color Selection */}
             {colors.length > 0 && (
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Color</Label>
+                <Label className="text-sm font-medium text-charcoal">Couleur</Label>
                 <div className="flex gap-3">
                   {colors.map((color) => (
                     <button
                       key={color}
-                      className={`w-10 h-10 rounded-full border-2 transition-all hover:scale-110 ${selectedColor === color ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-gray-300 dark:border-gray-600'}`}
+                      className={`w-10 h-10 rounded-full border-2 transition-all hover:scale-110 ${
+                        selectedColor === color ? 'border-terracotta ring-2 ring-terracotta/20' : 'border-charcoal/15'
+                      }`}
                       style={{ backgroundColor: color }}
                       onClick={() => setSelectedColor(color)}
                     />
@@ -759,12 +1351,16 @@ function ProductDetailView() {
             {/* Material Selection */}
             {materials.length > 0 && (
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Material</Label>
+                <Label className="text-sm font-medium text-charcoal">Mat\u00e9riau</Label>
                 <div className="flex flex-wrap gap-2">
                   {materials.map((mat) => (
                     <button
                       key={mat}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedMaterial === mat ? 'bg-amber-500 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                        selectedMaterial === mat
+                          ? 'bg-terracotta text-cream shadow-md'
+                          : 'bg-sand text-charcoal/70 hover:bg-terracotta/10 hover:text-terracotta'
+                      }`}
                       onClick={() => setSelectedMaterial(mat)}
                     >
                       {mat}
@@ -774,27 +1370,28 @@ function ProductDetailView() {
               </div>
             )}
 
-            {/* Engraving */}
+            {/* Custom Engraving */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Custom Engraving (optional)</Label>
+              <Label className="text-sm font-medium text-charcoal">Gravure personnalis\u00e9e (optionnel)</Label>
               <Input
-                placeholder="Enter text for engraving..."
+                placeholder="Entrez votre texte..."
                 value={engraving}
                 onChange={(e) => setEngraving(e.target.value.slice(0, 30))}
                 maxLength={30}
+                className="bg-white border-terracotta/10 focus:border-terracotta/30 rounded-xl"
               />
               {engraving && (
-                <p className="text-xs text-muted-foreground">{engraving.length}/30 characters</p>
+                <p className="text-xs text-charcoal/40">{engraving.length}/30 caract\u00e8res</p>
               )}
             </div>
 
             {/* Quantity */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Quantity</Label>
+              <Label className="text-sm font-medium text-charcoal">Quantit\u00e9</Label>
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="icon" className="w-10 h-10" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-                <span className="w-12 text-center font-semibold text-lg">{quantity}</span>
-                <Button variant="outline" size="icon" className="w-10 h-10" onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</Button>
+                <Button variant="outline" size="icon" className="w-10 h-10 rounded-xl border-terracotta/15 hover:bg-terracotta/5" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
+                <span className="w-12 text-center font-semibold text-lg text-charcoal">{quantity}</span>
+                <Button variant="outline" size="icon" className="w-10 h-10 rounded-xl border-terracotta/15 hover:bg-terracotta/5" onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</Button>
               </div>
             </div>
 
@@ -802,68 +1399,81 @@ function ProductDetailView() {
             <div className="flex gap-3 pt-2">
               <Button
                 size="lg"
-                className="flex-1 h-14 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold shadow-lg shadow-amber-500/25 text-base"
+                className="flex-1 h-14 bg-gradient-to-r from-terracotta to-terracotta-dark hover:from-terracotta-dark hover:to-terracotta text-cream font-semibold shadow-lg shadow-terracotta/20 text-base rounded-xl transition-all duration-300"
                 onClick={addToCart}
+                disabled={product.stock === 0}
               >
                 <ShoppingBag className="w-5 h-5 mr-2" />
-                Add to Cart - ${(product.price * quantity).toFixed(2)}
+                {product.stock === 0 ? 'Rupture de stock' : `Ajouter au panier \u2014 ${formatPrice(product.price * quantity, currency)}`}
               </Button>
-              <Button size="lg" variant="outline" className="h-14 w-14" onClick={() => toast.info('Added to wishlist!')}>
-                <Heart className="w-5 h-5" />
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-14 w-14 rounded-xl border-terracotta/15 hover:bg-terracotta/5 hover:text-terracotta"
+                onClick={() => { setIsWishlisted(!isWishlisted); toast.info(isWishlisted ? 'Retir\u00e9 des favoris' : 'Ajout\u00e9 aux favoris !'); }}
+              >
+                <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-terracotta text-terracotta' : ''}`} />
               </Button>
-              <Button size="lg" variant="outline" className="h-14 w-14" onClick={() => toast.info('Link copied!')}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-14 w-14 rounded-xl border-terracotta/15 hover:bg-terracotta/5 hover:text-terracotta"
+                onClick={() => toast.info('Lien copi\u00e9 !')}
+              >
                 <Share2 className="w-5 h-5" />
               </Button>
             </div>
 
-            {/* Features */}
+            {/* Trust badges */}
             <div className="grid grid-cols-3 gap-3 pt-2">
               {[
-                { icon: Truck, label: 'Free Shipping', desc: 'Orders $500+' },
-                { icon: RotateCcw, label: '30-Day Return', desc: 'Easy returns' },
-                { icon: Shield, label: '2-Year Warranty', desc: 'Full coverage' },
-              ].map((f, i) => (
-                <div key={i} className="flex flex-col items-center text-center p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <f.icon className="w-5 h-5 text-amber-600 mb-1" />
-                  <p className="text-xs font-medium">{f.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{f.desc}</p>
+                { icon: Truck, label: 'Livraison 58 Wilayas', desc: 'Partout en Alg\u00e9rie' },
+                { icon: RotateCcw, label: 'Retour 14 jours', desc: '\u00c9change facile' },
+                { icon: Shield, label: 'Paiement s\u00e9curis\u00e9', desc: 'Protection totale' },
+              ].map((f) => (
+                <div key={f.label} className="flex flex-col items-center text-center p-3 rounded-xl bg-sand/70">
+                  <f.icon className="w-5 h-5 text-terracotta mb-1.5" />
+                  <p className="text-xs font-medium text-charcoal">{f.label}</p>
+                  <p className="text-[10px] text-charcoal/40">{f.desc}</p>
                 </div>
               ))}
             </div>
 
             {/* Specs */}
-            {product.dimensions && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Specifications</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {product.dimensions && (
-                      <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                        <span className="text-muted-foreground">Dimensions</span>
-                        <span className="font-medium">{product.dimensions}</span>
-                      </div>
-                    )}
-                    {product.weight && (
-                      <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                        <span className="text-muted-foreground">Weight</span>
-                        <span className="font-medium">{product.weight} kg</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                      <span className="text-muted-foreground">In Stock</span>
-                      <span className="font-medium text-green-600">{product.stock} units</span>
-                    </div>
+            <Separator className="bg-terracotta/10" />
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-charcoal">Caract\u00e9ristiques</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {product.dimensions && (
+                  <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
+                    <span className="text-charcoal/50">Dimensions</span>
+                    <span className="font-medium text-charcoal">{product.dimensions}</span>
                   </div>
+                )}
+                {product.weight && (
+                  <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
+                    <span className="text-charcoal/50">Poids</span>
+                    <span className="font-medium text-charcoal">{product.weight} kg</span>
+                  </div>
+                )}
+                <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
+                  <span className="text-charcoal/50">En stock</span>
+                  <span className={`font-medium ${product.stock > 10 ? 'text-olive' : product.stock > 0 ? 'text-gold' : 'text-terracotta'}`}>
+                    {product.stock > 0 ? `${product.stock} unit\u00e9s` : 'Rupture'}
+                  </span>
                 </div>
-              </>
-            )}
+                <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
+                  <span className="text-charcoal/50">Note</span>
+                  <span className="font-medium text-charcoal">{product.rating}/5</span>
+                </div>
+              </div>
+            </div>
 
-            {/* Description */}
-            <Separator />
+            {/* Full Description */}
+            <Separator className="bg-terracotta/10" />
             <div>
-              <h3 className="font-semibold text-sm mb-2">Description</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
+              <h3 className="font-semibold text-sm text-charcoal mb-2">Description</h3>
+              <p className="text-sm text-charcoal/60 leading-relaxed">{product.description}</p>
             </div>
           </div>
         </div>
@@ -871,10 +1481,10 @@ function ProductDetailView() {
         {/* Recommendations */}
         {recommendations.length > 0 && (
           <section className="mt-16">
-            <h2 className="text-xl font-bold mb-6">You May Also Like</h2>
+            <h2 className="text-xl font-bold text-charcoal mb-6">Vous aimerez aussi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recommendations.map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
+              {recommendations.slice(0, 4).map((product, i) => (
+                <ProductCard key={product.id} product={product} index={i} />
               ))}
             </div>
           </section>
@@ -884,531 +1494,769 @@ function ProductDetailView() {
   );
 }
 
-// Error Boundary for 3D viewer
-class ErrorBoundary extends React.Component<{ fallback: React.ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  render() {
-    if (this.state.hasError) return this.props.fallback;
-    return this.props.children;
-  }
-}
-
-// ===== CHECKOUT VIEW =====
+// =============================================
+// CHECKOUT VIEW
+// =============================================
 function CheckoutView() {
-  const { goBack } = useAppStore();
   const { items, getTotal, clearCart } = useCartStore();
+  const { setView, currency } = useAppStore();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    email: '', firstName: '', lastName: '', address: '', city: '', country: 'US', zipCode: '',
-    cardNumber: '', expiry: '', cvv: '', nameOnCard: '',
+    fullName: '', phone: '', email: '', address: '', wilaya: '', commune: '',
+    paymentMethod: 'cod', note: '',
   });
 
   const subtotal = getTotal();
-  const shipping = subtotal > 500 ? 0 : 29.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  const shipping = subtotal > 5000 ? 0 : 500;
+  const total = subtotal + shipping;
+  const pointsEarned = Math.floor(total / 10);
 
-  const handlePlaceOrder = () => {
-    toast.success('Order placed successfully!', {
-      description: `Order total: $${total.toFixed(2)}. You earned ${Math.floor(total * 10)} points!`,
-    });
-    clearCart();
-    setTimeout(() => goBack(), 2000);
-  };
-
-  return (
-    <div className="pt-20 min-h-screen bg-gray-50 dark:bg-gray-800/30">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Steps */}
-        <div className="flex items-center justify-center mb-8">
-          {['Shipping', 'Payment', 'Review'].map((label, i) => (
-            <div key={i} className="flex items-center">
-              <button
-                className={`w-8 h-8 rounded-full text-sm font-semibold flex items-center justify-center transition-colors ${step > i + 1 ? 'bg-green-500 text-white' : step === i + 1 ? 'bg-amber-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground'}`}
-                onClick={() => setStep(i + 1)}
-              >
-                {step > i + 1 ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
-              </button>
-              <span className={`ml-2 text-sm font-medium mr-6 ${step === i + 1 ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
-              {i < 2 && <div className={`w-12 h-0.5 mr-6 ${step > i + 1 ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`} />}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          <div className="lg:col-span-3">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                {step === 1 && (
-                  <div className="space-y-4">
-                    <h2 className="text-lg font-bold">Shipping Information</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>First Name</Label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} placeholder="John" /></div>
-                      <div className="space-y-2"><Label>Last Name</Label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} placeholder="Doe" /></div>
-                    </div>
-                    <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@example.com" /></div>
-                    <div className="space-y-2"><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Main St" /></div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2"><Label>City</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
-                      <div className="space-y-2"><Label>Country</Label><Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} /></div>
-                      <div className="space-y-2"><Label>ZIP Code</Label><Input value={form.zipCode} onChange={(e) => setForm({ ...form, zipCode: e.target.value })} /></div>
-                    </div>
-                    <Button className="w-full" onClick={() => setStep(2)}>Continue to Payment</Button>
-                  </div>
-                )}
-                {step === 2 && (
-                  <div className="space-y-4">
-                    <h2 className="text-lg font-bold">Payment Method</h2>
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      {['Credit Card', 'PayPal', 'Crypto'].map((m, i) => (
-                        <button key={i} className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${i === 0 ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
-                          {m}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="space-y-2"><Label>Name on Card</Label><Input value={form.nameOnCard} onChange={(e) => setForm({ ...form, nameOnCard: e.target.value })} placeholder="John Doe" /></div>
-                    <div className="space-y-2"><Label>Card Number</Label><Input value={form.cardNumber} onChange={(e) => setForm({ ...form, cardNumber: e.target.value })} placeholder="4242 4242 4242 4242" /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Expiry</Label><Input value={form.expiry} onChange={(e) => setForm({ ...form, expiry: e.target.value })} placeholder="MM/YY" /></div>
-                      <div className="space-y-2"><Label>CVV</Label><Input value={form.cvv} onChange={(e) => setForm({ ...form, cvv: e.target.value })} placeholder="123" /></div>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-                      <Button className="flex-1" onClick={() => setStep(3)}>Review Order</Button>
-                    </div>
-                  </div>
-                )}
-                {step === 3 && (
-                  <div className="space-y-4">
-                    <h2 className="text-lg font-bold">Review Order</h2>
-                    <div className="space-y-3">
-                      {items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                          <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
-                            {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                          </div>
-                          <span className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <Separator />
-                    <div className="text-sm space-y-1">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Shipping to</span><span>{form.city}, {form.country}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Payment</span><span>•••• {form.cardNumber.slice(-4)}</span></div>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-                      <Button
-                        className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white"
-                        onClick={handlePlaceOrder}
-                      >
-                        Place Order - ${total.toFixed(2)}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Order Summary */}
-          <div className="lg:col-span-2">
-            <Card className="border-0 shadow-sm sticky top-24">
-              <CardContent className="p-6">
-                <h3 className="font-bold mb-4">Order Summary</h3>
-                <div className="space-y-3 mb-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground truncate mr-4">{item.name} x{item.quantity}</span>
-                      <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-                <Separator className="mb-4" />
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>${tax.toFixed(2)}</span></div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold"><span>Total</span><span>${total.toFixed(2)}</span></div>
-                </div>
-                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
-                  <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Earn {Math.floor(total * 10)} loyalty points!</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ===== PROFILE / REWARDS VIEW =====
-function ProfileView() {
-  const { goBack, setView } = useAppStore();
-  const [userPoints] = useState(2500);
-  const [userLevel] = useState(5);
-  const nextLevelPoints = 5000;
-  const progress = (userPoints / nextLevelPoints) * 100;
-
-  const badges = [
-    { name: 'First Purchase', icon: '🛍️', earned: true, desc: 'Made first purchase' },
-    { name: 'Review Writer', icon: '✍️', earned: true, desc: 'Wrote 5 reviews' },
-    { name: 'Loyal Customer', icon: '⭐', earned: false, desc: 'Make 10 purchases' },
-    { name: 'Big Spender', icon: '💰', earned: false, desc: 'Spend over $1,000' },
-    { name: 'Trendsetter', icon: '🔥', earned: true, desc: 'Reviewed a new product' },
-    { name: 'VIP Member', icon: '👑', earned: false, desc: 'Earn 5,000 points' },
-  ];
-
-  const leaderboard = [
-    { rank: 1, name: 'Sarah K.', points: 12500, level: 12 },
-    { rank: 2, name: 'Mike T.', points: 10200, level: 10 },
-    { rank: 3, name: 'Emma R.', points: 8900, level: 9 },
-    { rank: 4, name: 'Alex P.', points: 5400, level: 7 },
-    { rank: 5, name: 'You', points: userPoints, level: userLevel },
-  ];
-
-  return (
-    <div className="pt-20 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button onClick={goBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-amber-600 mb-6 transition-colors">
-          <ChevronLeft className="w-4 h-4" /> Back
-        </button>
-
-        {/* Header */}
-        <Card className="border-0 shadow-sm overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-6 text-white">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                J
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">John Doe</h2>
-                <p className="text-amber-100">Level {userLevel} Member</p>
-              </div>
-              <div className="ml-auto text-right">
-                <p className="text-3xl font-bold">{userPoints.toLocaleString()}</p>
-                <p className="text-amber-100 text-sm">Total Points</p>
-              </div>
-            </div>
-          </div>
-          <CardContent className="p-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Level {userLevel}</span>
-                <span className="font-medium">{nextLevelPoints - userPoints} points to Level {userLevel + 1}</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Badges */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-600" /> Badges
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3">
-                {badges.map((badge, i) => (
-                  <div
-                    key={i}
-                    className={`flex flex-col items-center p-3 rounded-xl text-center transition-all ${badge.earned ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-200 dark:ring-amber-800' : 'bg-gray-50 dark:bg-gray-800/50 opacity-50'}`}
-                  >
-                    <span className="text-2xl mb-1">{badge.icon}</span>
-                    <p className="text-xs font-medium">{badge.name}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{badge.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Leaderboard */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-600" /> Leaderboard
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {leaderboard.map((entry, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-center gap-3 p-3 rounded-lg transition-all ${entry.name === 'You' ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-200 dark:ring-amber-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
-                  >
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300 text-gray-700' : i === 2 ? 'bg-orange-300 text-orange-900' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground'}`}>
-                      {entry.rank}
-                    </span>
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${entry.name === 'You' ? 'text-amber-600' : ''}`}>{entry.name}</p>
-                      <p className="text-xs text-muted-foreground">Level {entry.level}</p>
-                    </div>
-                    <span className="text-sm font-semibold">{entry.points.toLocaleString()} pts</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card className="border-0 shadow-sm mt-6">
-          <CardContent className="p-6">
-            <h3 className="font-semibold mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { icon: Package, label: 'My Orders', action: () => setView('orders') },
-                { icon: Heart, label: 'Wishlist', action: () => toast.info('Wishlist coming soon!') },
-                { icon: Settings, label: 'Settings', action: () => toast.info('Settings coming soon!') },
-                { icon: Megaphone, label: 'Refer a Friend', action: () => toast.info('Referral program coming soon!') },
-              ].map((item, i) => (
-                <button
-                  key={i}
-                  onClick={item.action}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <item.icon className="w-6 h-6 text-amber-600" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-// ===== ORDERS VIEW =====
-function OrdersView() {
-  const { goBack } = useAppStore();
-  const orders = [
-    { id: 'ORD-001', date: '2025-01-15', total: 1299.98, status: 'Delivered', items: 2 },
-    { id: 'ORD-002', date: '2025-01-10', total: 349.99, status: 'Shipped', items: 1 },
-    { id: 'ORD-003', date: '2024-12-28', total: 899.99, status: 'Delivered', items: 1 },
-  ];
-
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'Shipped': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'Processing': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+  const placeOrder = async () => {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: 'demo',
+          total,
+          subtotal,
+          tax: 0,
+          shipping,
+          address: `${form.address}, ${form.commune}`,
+          city: form.wilaya,
+          country: 'Alg\u00e9rie',
+          zipCode: form.wilaya.split(' ')[0],
+          paymentMethod: form.paymentMethod,
+          note: form.note,
+          items: items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            color: item.color,
+            material: item.material,
+            engraving: item.engraving,
+          })),
+        }),
+      });
+      if (res.ok) {
+        clearCart();
+        toast.success('Commande confirm\u00e9e !', { description: `+${pointsEarned} points fid\u00e9lit\u00e9` });
+        setView('orders');
+      }
+    } catch {
+      toast.error('Erreur lors de la commande');
     }
   };
 
+  const steps = [
+    { num: 1, label: 'Livraison', icon: MapPin },
+    { num: 2, label: 'Paiement', icon: CreditCard },
+    { num: 3, label: 'V\u00e9rification', icon: CheckCircle2 },
+  ];
+
   return (
-    <div className="pt-20 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button onClick={goBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-amber-600 mb-6 transition-colors">
-          <ChevronLeft className="w-4 h-4" /> Back
-        </button>
-        <h1 className="text-2xl font-bold mb-6">My Orders</h1>
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <Card key={order.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="font-semibold">{order.id}</p>
-                    <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <div className="pt-20 min-h-screen bg-cream">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-charcoal mb-8">Finaliser la commande</h1>
+
+        {/* Steps */}
+        <div className="flex items-center gap-4 mb-10">
+          {steps.map((s, i) => (
+            <React.Fragment key={s.num}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${
+                  step >= s.num ? 'bg-terracotta text-cream shadow-md' : 'bg-sand text-charcoal/40'
+                }`}>
+                  {step > s.num ? <CheckCircle2 className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
+                </div>
+                <span className={`text-sm font-medium hidden sm:block ${step >= s.num ? 'text-charcoal' : 'text-charcoal/40'}`}>
+                  {s.label}
+                </span>
+              </div>
+              {i < steps.length - 1 && (
+                <div className={`flex-1 h-0.5 rounded-full transition-colors duration-500 ${step > s.num ? 'bg-terracotta' : 'bg-charcoal/10'}`} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Form */}
+          <div className="lg:col-span-2">
+            <AnimatePresence mode="wait">
+              {step === 1 && (
+                <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                  <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                    <CardContent className="p-6 space-y-5">
+                      <h2 className="text-lg font-semibold text-charcoal flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-terracotta" />
+                        Adresse de livraison
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm text-charcoal/70">Nom complet *</Label>
+                          <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Mohamed Benali" className="bg-sand/50 border-terracotta/10 rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm text-charcoal/70">T\u00e9l\u00e9phone *</Label>
+                          <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0555 123 456" className="bg-sand/50 border-terracotta/10 rounded-xl" />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label className="text-sm text-charcoal/70">Email</Label>
+                          <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@exemple.dz" className="bg-sand/50 border-terracotta/10 rounded-xl" />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label className="text-sm text-charcoal/70">Adresse *</Label>
+                          <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Rue, num\u00e9ro, quartier..." className="bg-sand/50 border-terracotta/10 rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm text-charcoal/70">Wilaya *</Label>
+                          <Select value={form.wilaya} onValueChange={(v) => setForm({ ...form, wilaya: v })}>
+                            <SelectTrigger className="bg-sand/50 border-terracotta/10 rounded-xl">
+                              <SelectValue placeholder="S\u00e9lectionner..." />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-64 overflow-y-auto">
+                              {WILAYAS.map((w) => (
+                                <SelectItem key={w} value={w}>{w}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm text-charcoal/70">Commune</Label>
+                          <Input value={form.commune} onChange={(e) => setForm({ ...form, commune: e.target.value })} placeholder="Commune..." className="bg-sand/50 border-terracotta/10 rounded-xl" />
+                        </div>
+                      </div>
+                      <Button
+                        className="w-full h-12 bg-terracotta hover:bg-terracotta-dark text-cream font-semibold rounded-xl mt-4"
+                        onClick={() => {
+                          if (form.fullName && form.phone && form.address && form.wilaya) {
+                            setStep(2);
+                          } else {
+                            toast.error('Veuillez remplir tous les champs obligatoires');
+                          }
+                        }}
+                      >
+                        Continuer vers le paiement
+                        <ChevronRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {step === 2 && (
+                <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                  <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                    <CardContent className="p-6 space-y-5">
+                      <h2 className="text-lg font-semibold text-charcoal flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-terracotta" />
+                        Mode de paiement
+                      </h2>
+                      <div className="space-y-3">
+                        {[
+                          { value: 'cod', label: 'Paiement \u00e0 la livraison', desc: 'Payez en cash \u00e0 la r\u00e9ception', icon: Banknote },
+                          { value: 'credit_card', label: 'Carte bancaire (EDAHABIA / CIB)', desc: 'Paiement s\u00e9curis\u00e9 en ligne', icon: CreditCard },
+                          { value: 'transfer', label: 'Virement bancaire', desc: ' CCP ou virement', icon: Wallet },
+                        ].map((p) => (
+                          <button
+                            key={p.value}
+                            onClick={() => setForm({ ...form, paymentMethod: p.value })}
+                            className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                              form.paymentMethod === p.value
+                                ? 'border-terracotta bg-terracotta/5'
+                                : 'border-terracotta/10 hover:border-terracotta/25 bg-white'
+                            }`}
+                          >
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                              form.paymentMethod === p.value ? 'bg-terracotta text-cream' : 'bg-sand text-charcoal/60'
+                            }`}>
+                              <p.icon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-charcoal text-sm">{p.label}</p>
+                              <p className="text-xs text-charcoal/50">{p.desc}</p>
+                            </div>
+                            {form.paymentMethod === p.value && (
+                              <CheckCircle2 className="w-5 h-5 text-terracotta ml-auto" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-3 mt-4">
+                        <Button variant="outline" className="flex-1 h-12 border-terracotta/15 hover:bg-terracotta/5 rounded-xl" onClick={() => setStep(1)}>
+                          <ChevronLeft className="w-4 h-4 mr-1" /> Retour
+                        </Button>
+                        <Button className="flex-1 h-12 bg-terracotta hover:bg-terracotta-dark text-cream font-semibold rounded-xl" onClick={() => setStep(3)}>
+                          V\u00e9rifier la commande
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {step === 3 && (
+                <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                  <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                    <CardContent className="p-6 space-y-5">
+                      <h2 className="text-lg font-semibold text-charcoal flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-olive" />
+                        V\u00e9rification
+                      </h2>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-sand/70 rounded-xl space-y-1">
+                          <p className="text-xs text-charcoal/40 uppercase tracking-wider">Livraison</p>
+                          <p className="text-sm font-medium text-charcoal">{form.fullName}</p>
+                          <p className="text-sm text-charcoal/60">{form.address}, {form.commune}</p>
+                          <p className="text-sm text-charcoal/60">{form.wilaya} \u2014 {form.phone}</p>
+                        </div>
+                        <div className="p-4 bg-sand/70 rounded-xl space-y-1">
+                          <p className="text-xs text-charcoal/40 uppercase tracking-wider">Paiement</p>
+                          <p className="text-sm font-medium text-charcoal">
+                            {form.paymentMethod === 'cod' ? 'Paiement \u00e0 la livraison' : form.paymentMethod === 'credit_card' ? 'Carte bancaire' : 'Virement bancaire'}
+                          </p>
+                        </div>
+                        <div className="p-4 bg-sand/70 rounded-xl space-y-1">
+                          <p className="text-xs text-charcoal/40 uppercase tracking-wider">Articles ({items.length})</p>
+                          {items.map((item) => (
+                            <div key={item.id} className="flex justify-between text-sm">
+                              <span className="text-charcoal/70">{item.quantity}x {item.name}</span>
+                              <span className="font-medium text-charcoal">{formatPrice(item.price * item.quantity, currency)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-3 mt-4">
+                          <Button variant="outline" className="flex-1 h-12 border-terracotta/15 hover:bg-terracotta/5 rounded-xl" onClick={() => setStep(2)}>
+                            <ChevronLeft className="w-4 h-4 mr-1" /> Retour
+                          </Button>
+                          <Button
+                            className="flex-1 h-12 bg-gradient-to-r from-terracotta to-terracotta-dark hover:from-terracotta-dark hover:to-terracotta text-cream font-semibold rounded-xl shadow-lg shadow-terracotta/20"
+                            onClick={placeOrder}
+                          >
+                            Confirmer la commande
+                            <CheckCircle2 className="w-4 h-4 ml-2" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Order Summary Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="border-0 shadow-sm bg-white rounded-2xl sticky top-24">
+              <CardContent className="p-6 space-y-4">
+                <h3 className="font-semibold text-charcoal">R\u00e9sum\u00e9</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-charcoal/60">
+                    <span>Sous-total</span>
+                    <span>{formatPrice(subtotal, currency)}</span>
                   </div>
-                  <div className="text-right">
-                    <Badge className={statusColor(order.status)}>{order.status}</Badge>
-                    <p className="font-bold mt-1">${order.total.toFixed(2)}</p>
+                  <div className="flex justify-between text-charcoal/60">
+                    <span>Livraison</span>
+                    <span className={shipping === 0 ? 'text-olive font-medium' : ''}>
+                      {shipping === 0 ? 'Gratuite' : formatPrice(shipping, currency)}
+                    </span>
+                  </div>
+                  {shipping > 0 && (
+                    <p className="text-xs text-charcoal/40">Livraison gratuite d\u00e8s {formatPrice(5000, currency)}</p>
+                  )}
+                  <Separator className="bg-terracotta/10" />
+                  <div className="flex justify-between text-lg font-bold text-charcoal">
+                    <span>Total</span>
+                    <span>{formatPrice(total, currency)}</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{order.items} item(s)</p>
-                  <Button variant="ghost" size="sm">View Details</Button>
+
+                {/* Points earned */}
+                <div className="flex items-center gap-2 p-3 bg-gold/10 rounded-xl mt-2">
+                  <Sparkles className="w-4 h-4 text-gold flex-shrink-0" />
+                  <span className="text-sm font-medium text-charcoal/70">
+                    +{pointsEarned} points fid\u00e9lit\u00e9 avec cette commande !
+                  </span>
                 </div>
+
+                {shipping > 0 && (
+                  <div className="flex items-center gap-2 p-3 bg-terracotta/5 rounded-xl">
+                    <Truck className="w-4 h-4 text-terracotta flex-shrink-0" />
+                    <span className="text-xs text-charcoal/50">
+                      Ajoutez {formatPrice(5000 - subtotal, currency)} pour la livraison gratuite
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ===== ADMIN DASHBOARD VIEW =====
-function AdminDashboard() {
-  const { goBack, setView } = useAppStore();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [products, setProducts] = useState<Product[]>([]);
+// =============================================
+// PROFILE / REWARDS VIEW
+// =============================================
+function ProfileView() {
+  const { setView } = useAppStore();
+  const [user] = useState({
+    name: 'Amira Benali',
+    email: 'amira@darna.dz',
+    points: 2450,
+    level: 3,
+    memberSince: 'Janvier 2024',
+    totalOrders: 12,
+  });
+
+  const badges = [
+    { name: 'Premier Achat', icon: Gift, desc: 'Premi\u00e8re commande', earned: true, color: 'terracotta' },
+    { name: 'Client Fid\u00e8le', icon: Heart, desc: '5 commandes pass\u00e9es', earned: true, color: 'gold' },
+    { name: 'Artisan Lover', icon: HandMetal, desc: '10 articles achet\u00e9s', earned: true, color: 'olive' },
+    { name: 'Ambassadeur', icon: Crown, desc: 'Parrainer 3 amis', earned: false, color: 'terracotta' },
+    { name: 'Collectionneur', icon: Gem, desc: 'Un article de chaque cat\u00e9gorie', earned: false, color: 'gold' },
+    { name: 'Darna Elite', icon: Trophy, desc: 'Atteindre le niveau 5', earned: false, color: 'terracotta-dark' },
+  ];
+
+  const leaderboard = [
+    { name: 'Karim M.', points: 5200, avatar: 'KM' },
+    { name: 'Fatima Z.', points: 4100, avatar: 'FZ' },
+    { name: 'Yacine B.', points: 3800, avatar: 'YB' },
+    { name: 'Amira B.', points: 2450, avatar: 'AB', isUser: true },
+    { name: 'Sofiane H.', points: 1900, avatar: 'SH' },
+  ];
+
+  const pointsToNextLevel = 5000;
+  const progressPercent = Math.min(100, (user.points / pointsToNextLevel) * 100);
+
+  return (
+    <div className="pt-20 min-h-screen bg-cream">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-charcoal mb-8">Mon Espace Fid\u00e9lit\u00e9</h1>
+
+        {/* User Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card className="border-0 shadow-sm bg-gradient-to-r from-terracotta to-terracotta-dark rounded-2xl overflow-hidden">
+            <CardContent className="p-6 md:p-8 text-cream relative">
+              <div className="absolute inset-0 opacity-5">
+                <ZelligePattern className="w-full h-full text-cream" />
+              </div>
+              <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-cream/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
+                  AB
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold">{user.name}</h2>
+                  <p className="text-cream/70 text-sm">{user.email}</p>
+                  <p className="text-cream/50 text-xs mt-1">Membre depuis {user.memberSince}</p>
+                </div>
+                <div className="flex gap-6 text-center">
+                  <div>
+                    <p className="text-2xl font-bold">{user.points.toLocaleString('fr-DZ')}</p>
+                    <p className="text-xs text-cream/60">Points</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{user.totalOrders}</p>
+                    <p className="text-xs text-cream/60">Commandes</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">Niv. {user.level}</p>
+                    <p className="text-xs text-cream/60">Niveau</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Points Progress */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mt-6"
+        >
+          <Card className="border-0 shadow-sm bg-white rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-charcoal">Progr\u00e8s vers le Niveau {user.level + 1}</h3>
+                <span className="text-sm text-charcoal/50">{user.points.toLocaleString('fr-DZ')} / {pointsToNextLevel.toLocaleString('fr-DZ')} pts</span>
+              </div>
+              <div className="h-3 bg-sand rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 1, delay: 0.3 }}
+                  className="h-full bg-gradient-to-r from-terracotta to-gold rounded-full"
+                />
+              </div>
+              <p className="text-xs text-charcoal/40 mt-2">Encore {(pointsToNextLevel - user.points).toLocaleString('fr-DZ')} points pour le prochain niveau</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Badges */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-6"
+        >
+          <h3 className="font-semibold text-charcoal mb-4">Mes Badges</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {badges.map((badge, i) => (
+              <motion.div
+                key={badge.name}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 * i }}
+              >
+                <Card className={`border-0 shadow-sm rounded-2xl text-center ${badge.earned ? 'bg-white' : 'bg-charcoal/5 opacity-60'}`}>
+                  <CardContent className="p-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 ${
+                      badge.earned ? `bg-${badge.color}/15` : 'bg-charcoal/10'
+                    }`}>
+                      <badge.icon className={`w-6 h-6 ${badge.earned ? `text-${badge.color}` : 'text-charcoal/30'}`} />
+                    </div>
+                    <p className="text-xs font-semibold text-charcoal">{badge.name}</p>
+                    <p className="text-[10px] text-charcoal/40 mt-0.5">{badge.desc}</p>
+                    {badge.earned && (
+                      <Badge className="mt-2 bg-olive/10 text-olive border-olive/20 text-[9px] rounded-full px-2">D\u00e9bloqu\u00e9</Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Leaderboard */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-6"
+        >
+          <Card className="border-0 shadow-sm bg-white rounded-2xl">
+            <CardContent className="p-6">
+              <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-gold" />
+                Classement Fid\u00e9lit\u00e9
+              </h3>
+              <div className="space-y-2">
+                {leaderboard.map((entry, i) => (
+                  <div
+                    key={entry.name}
+                    className={`flex items-center gap-4 p-3 rounded-xl transition-colors ${
+                      entry.isUser ? 'bg-terracotta/10 border border-terracotta/15' : 'hover:bg-sand/70'
+                    }`}
+                  >
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold ${
+                      i === 0 ? 'bg-gold/20 text-gold' : i === 1 ? 'bg-charcoal/10 text-charcoal/60' : i === 2 ? 'bg-terracotta/10 text-terracotta' : 'bg-sand text-charcoal/40'
+                    }`}>
+                      {i + 1}
+                    </span>
+                    <div className="w-8 h-8 rounded-lg bg-terracotta/10 flex items-center justify-center text-xs font-semibold text-terracotta">
+                      {entry.avatar}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-charcoal">{entry.name} {entry.isUser && <span className="text-terracotta">(vous)</span>}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-charcoal">{entry.points.toLocaleString('fr-DZ')} pts</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-6"
+        >
+          <Button
+            className="bg-terracotta hover:bg-terracotta-dark text-cream rounded-xl"
+            onClick={() => setView('catalog')}
+          >
+            <ShoppingBag className="w-4 h-4 mr-2" />
+            Continuer mes achats
+          </Button>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================
+// ORDERS VIEW
+// =============================================
+function OrdersView() {
+  const { setView, currency } = useAppStore();
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/orders')
+      .then(r => r.json())
+      .then(data => { setOrders(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const statusColors: Record<string, string> = {
+    pending: 'bg-gold/15 text-gold',
+    confirmed: 'bg-olive/15 text-olive',
+    shipped: 'bg-terracotta/15 text-terracotta',
+    delivered: 'bg-olive/15 text-olive',
+    cancelled: 'bg-charcoal/10 text-charcoal/50',
+  };
+
+  const statusLabels: Record<string, string> = {
+    pending: 'En attente',
+    confirmed: 'Confirm\u00e9e',
+    shipped: 'Exp\u00e9di\u00e9e',
+    delivered: 'Livr\u00e9e',
+    cancelled: 'Annul\u00e9e',
+  };
+
+  return (
+    <div className="pt-20 min-h-screen bg-cream">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center gap-2 text-sm text-charcoal/50 mb-6">
+          <button onClick={() => setView('home')} className="hover:text-terracotta transition-colors">Accueil</button>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-charcoal font-medium">Mes Commandes</span>
+        </div>
+
+        <h1 className="text-2xl md:text-3xl font-bold text-charcoal mb-8">Mes Commandes</h1>
+
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-2xl" />
+            ))}
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="w-20 h-20 rounded-full bg-sand flex items-center justify-center mx-auto mb-4">
+              <Package className="w-10 h-10 text-charcoal/20" />
+            </div>
+            <h3 className="text-lg font-semibold text-charcoal mb-2">Aucune commande</h3>
+            <p className="text-charcoal/50 mb-6">Vous n&apos;avez pas encore pass\u00e9 de commande.</p>
+            <Button className="bg-terracotta hover:bg-terracotta-dark text-cream rounded-xl" onClick={() => setView('catalog')}>
+              D\u00e9couvrir la boutique
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {orders.map((order, i) => (
+              <motion.div
+                key={order.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 * i }}
+              >
+                <Card className="border-0 shadow-sm bg-white rounded-2xl hover:shadow-md transition-shadow">
+                  <CardContent className="p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-sand flex items-center justify-center">
+                          <Package className="w-5 h-5 text-terracotta" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-charcoal text-sm">Commande #{order.id.slice(0, 8).toUpperCase()}</p>
+                          <p className="text-xs text-charcoal/40 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(order.createdAt).toLocaleDateString('fr-DZ', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge className={`${statusColors[order.status] || 'bg-charcoal/10 text-charcoal/50'} rounded-full text-xs`}>
+                          {statusLabels[order.status] || order.status}
+                        </Badge>
+                        <span className="font-semibold text-charcoal">{formatPrice(order.total, currency)}</span>
+                      </div>
+                    </div>
+                    {order.items && order.items.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-terracotta/5">
+                        <p className="text-xs text-charcoal/40">
+                          {order.items.length} article(s) {order.items[0]?.product?.name ? `\u2014 ${order.items[0].product.name}` : ''}
+                          {order.items.length > 1 ? ` +${order.items.length - 1} autre(s)` : ''}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================
+// ADMIN DASHBOARD
+// =============================================
+function AdminDashboardView() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     Promise.all([
       fetch('/api/analytics/summary').then(r => r.json()),
       fetch('/api/products?limit=50').then(r => r.json()),
-    ]).then(([analyticsData, productsData]) => {
-      setAnalytics(analyticsData);
-      setProducts(productsData.products || []);
+    ]).then(([analytics, productsData]) => {
+      setData({ ...analytics, allProducts: productsData.products || [] });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
 
-  if (loading) {
+  if (loading || !data) {
     return (
-      <div className="pt-20 min-h-screen bg-gray-50 dark:bg-gray-800/30">
+      <div className="pt-20 min-h-screen bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl" />
+            ))}
           </div>
-          <Skeleton className="h-[400px] rounded-xl" />
         </div>
       </div>
     );
   }
 
-  const summary = analytics?.summary || {};
+  const { summary, salesByCategory, recentOrders, topProducts, monthlySales, allProducts } = data;
+  const maxSale = Math.max(...monthlySales.map((m: any) => m.sales));
 
   return (
-    <div className="pt-20 min-h-screen bg-gray-50 dark:bg-gray-800/30">
+    <div className="pt-20 min-h-screen bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={goBack}>
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Manage your store</p>
-            </div>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-charcoal">Tableau de bord</h1>
+            <p className="text-charcoal/50 text-sm mt-1">Bienvenue, Admin Darna</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Bell className="w-4 h-4 mr-2" /> Alerts (3)
-            </Button>
-            <Button size="sm" className="bg-gradient-to-r from-amber-500 to-orange-600">
-              <Plus className="w-4 h-4 mr-2" /> Add Product
-            </Button>
-          </div>
+          <Button variant="outline" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+            <Download className="w-4 h-4 mr-2" />
+            Exporter
+          </Button>
         </div>
 
-        {/* Alerts */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {[
-            { icon: AlertTriangle, color: 'text-red-500 bg-red-50 dark:bg-red-900/20', msg: 'Low stock: Vertex Ultrabook Pro (15 left)', time: '2h ago' },
-            { icon: TrendingUp, color: 'text-green-500 bg-green-50 dark:bg-green-900/20', msg: 'Sales up 23% this week', time: '5h ago' },
-            { icon: Users, color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/20', msg: '12 new customer sign-ups today', time: '8h ago' },
-          ].map((alert, i) => (
-            <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${alert.color}`}>
-              <alert.icon className="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{alert.msg}</p>
-                <p className="text-xs opacity-70">{alert.time}</p>
-              </div>
-            </div>
+            { label: 'Revenus', value: `${summary.totalRevenue.toLocaleString('fr-DZ')} DA`, icon: TrendingUp, change: '+12%', color: 'terracotta' },
+            { label: 'Commandes', value: String(summary.totalOrders), icon: ShoppingBag, change: '+8%', color: 'gold' },
+            { label: 'Produits', value: String(summary.totalProducts), icon: Package, change: '+2', color: 'olive' },
+            { label: 'Note Moyenne', value: `${(summary.avgRating || 0).toFixed(1)}/5`, icon: Star, change: '+0.2', color: 'terracotta' },
+          ].map((kpi, i) => (
+            <motion.div
+              key={kpi.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * i }}
+            >
+              <Card className="border-0 shadow-sm bg-white rounded-2xl hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`w-10 h-10 rounded-xl bg-${kpi.color}/10 flex items-center justify-center`}>
+                      <kpi.icon className={`w-5 h-5 text-${kpi.color}`} />
+                    </div>
+                    <Badge className="bg-olive/10 text-olive border-olive/20 rounded-full text-xs">
+                      {kpi.change}
+                    </Badge>
+                  </div>
+                  <p className="text-2xl font-bold text-charcoal">{kpi.value}</p>
+                  <p className="text-xs text-charcoal/40 mt-1">{kpi.label}</p>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="overview"><BarChart3 className="w-4 h-4 mr-1.5" /> Overview</TabsTrigger>
-            <TabsTrigger value="products"><Boxes className="w-4 h-4 mr-1.5" /> Products</TabsTrigger>
-            <TabsTrigger value="inventory"><Package className="w-4 h-4 mr-1.5" /> Inventory</TabsTrigger>
-            <TabsTrigger value="reports"><FileText className="w-4 h-4 mr-1.5" /> Reports</TabsTrigger>
+          <TabsList className="bg-sand rounded-xl mb-6">
+            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
+              Vue d&apos;ensemble
+            </TabsTrigger>
+            <TabsTrigger value="products" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
+              Produits
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
+              Stock
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
+              Rapports
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {[
-                { label: 'Total Revenue', value: `$${((summary.totalRevenue || 0)).toLocaleString()}`, icon: DollarSign, change: '+12.5%', up: true, color: 'from-emerald-500 to-green-600' },
-                { label: 'Total Orders', value: String(summary.totalOrders || 0), icon: ShoppingBag, change: '+8.3%', up: true, color: 'from-blue-500 to-indigo-600' },
-                { label: 'Total Products', value: String(summary.totalProducts || 0), icon: Boxes, change: '+2', up: true, color: 'from-amber-500 to-orange-600' },
-                { label: 'Avg Rating', value: (summary.avgRating || 0).toFixed(1), icon: Star, change: '+0.2', up: true, color: 'from-purple-500 to-pink-600' },
-              ].map((kpi, i) => (
-                <Card key={i} className="border-0 shadow-sm overflow-hidden">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center shadow-lg`}>
-                        <kpi.icon className="w-5 h-5 text-white" />
-                      </div>
-                      <div className={`flex items-center gap-1 text-xs font-medium ${kpi.up ? 'text-green-600' : 'text-red-600'}`}>
-                        {kpi.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                        {kpi.change}
-                      </div>
+          <TabsContent value="overview" className="space-y-6">
+            {/* Sales Chart */}
+            <Card className="border-0 shadow-sm bg-white rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-charcoal flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-terracotta" />
+                  Ventes mensuelles
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-3 h-48">
+                  {monthlySales.map((m: any, i: number) => (
+                    <div key={m.month} className="flex-1 flex flex-col items-center gap-2">
+                      <span className="text-[10px] text-charcoal/40 font-medium">
+                        {(m.sales / 1000).toFixed(0)}k
+                      </span>
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${(m.sales / maxSale) * 100}%` }}
+                        transition={{ duration: 0.8, delay: i * 0.1 }}
+                        className="w-full bg-gradient-to-t from-terracotta to-terracotta-light rounded-t-lg min-h-[4px]"
+                      />
+                      <span className="text-xs text-charcoal/50">{m.month}</span>
                     </div>
-                    <p className="text-2xl font-bold">{kpi.value}</p>
-                    <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-              {/* Sales Trend */}
-              <Card className="border-0 shadow-sm lg:col-span-2">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Sales Trend</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 flex items-end gap-3 pt-4">
-                    {(analytics?.monthlySales || []).map((m: { month: string; sales: number }, i: number) => {
-                      const maxSales = Math.max(...(analytics?.monthlySales || []).map((d: { sales: number }) => d.sales));
-                      const height = (m.sales / maxSales) * 100;
-                      return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                          <span className="text-xs font-medium">${(m.sales / 1000).toFixed(1)}k</span>
-                          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-t-lg relative" style={{ height: '100%' }}>
-                            <motion.div
-                              initial={{ height: 0 }}
-                              animate={{ height: `${height}%` }}
-                              transition={{ duration: 0.8, delay: i * 0.1 }}
-                              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-500 to-orange-400 rounded-t-lg"
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground">{m.month}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
+            {/* Category Distribution + Recent Orders */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Category Distribution */}
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Sales by Category</CardTitle>
+              <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-charcoal text-base">R\u00e9partition par cat\u00e9gorie</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {(analytics?.salesByCategory || []).map((cat: { name: string; sales: number }, i: number) => {
-                      const maxSales = Math.max(...(analytics?.salesByCategory || []).map((c: { sales: number }) => c.sales));
-                      const width = (cat.sales / maxSales) * 100;
-                      const colors = ['from-amber-500 to-orange-500', 'from-blue-500 to-indigo-500', 'from-emerald-500 to-green-500'];
+                  <div className="space-y-3">
+                    {salesByCategory.map((cat: any) => {
+                      const totalSales = salesByCategory.reduce((s: number, c: any) => s + c.sales, 0);
+                      const pct = totalSales > 0 ? (cat.sales / totalSales) * 100 : 0;
                       return (
-                        <div key={i}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium">{cat.name}</span>
-                            <span className="text-sm text-muted-foreground">${(cat.sales / 1000).toFixed(1)}k</span>
+                        <div key={cat.name} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-charcoal/70">{cat.name}</span>
+                            <span className="font-medium text-charcoal">{cat.sales.toLocaleString('fr-DZ')} DA</span>
                           </div>
-                          <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                          <div className="h-2 bg-sand rounded-full overflow-hidden">
                             <motion.div
                               initial={{ width: 0 }}
-                              animate={{ width: `${width}%` }}
-                              transition={{ duration: 0.8, delay: i * 0.15 }}
-                              className={`h-full rounded-full bg-gradient-to-r ${colors[i % colors.length]}`}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ duration: 0.8 }}
+                              className="h-full bg-gradient-to-r from-terracotta to-gold rounded-full"
                             />
                           </div>
                         </div>
@@ -1417,137 +2265,122 @@ function AdminDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Recent Orders & Top Products */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Recent Orders</CardTitle>
+              {/* Recent Orders */}
+              <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-charcoal text-base">Commandes r\u00e9centes</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {(analytics?.recentOrders || []).map((order: any, i: number) => (
-                      <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-muted-foreground">
-                          {order.user?.name?.charAt(0) || 'A'}
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {recentOrders.map((order: any) => (
+                      <div key={order.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-sand/70 transition-colors">
+                        <div>
+                          <p className="text-sm font-medium text-charcoal">#{order.id.slice(0, 8).toUpperCase()}</p>
+                          <p className="text-xs text-charcoal/40">{order.user?.name || 'Client'}</p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{order.user?.name || 'Anonymous'}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-charcoal">{order.total.toLocaleString('fr-DZ')} DA</p>
+                          <Badge className={`${order.status === 'pending' ? 'bg-gold/15 text-gold' : 'bg-olive/15 text-olive'} text-[10px] rounded-full`}>
+                            {order.status}
+                          </Badge>
                         </div>
-                        <Badge variant="secondary" className="text-xs">{order.status || 'pending'}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Top Products</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {(analytics?.topProducts || []).map((product: any, i: number) => (
-                      <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-muted-foreground">
-                          #{i + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{product.name}</p>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center">
-                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                              <span className="text-xs text-muted-foreground ml-1">{product.rating}</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">({product.reviewCount} reviews)</span>
-                          </div>
-                        </div>
-                        <span className="text-sm font-semibold">${product.price}</span>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Top Products */}
+            <Card className="border-0 shadow-sm bg-white rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-charcoal flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-gold" />
+                  Produits les plus populaires
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {topProducts.map((p: any, i: number) => (
+                    <div key={p.id} className="flex items-center gap-3 p-3 bg-sand/70 rounded-xl">
+                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
+                        i === 0 ? 'bg-gold/20 text-gold' : 'bg-charcoal/10 text-charcoal/50'
+                      }`}>{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-charcoal truncate">{p.name}</p>
+                        <p className="text-[10px] text-charcoal/40">{p.stock} en stock</p>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        <Star className="w-3 h-3 fill-gold text-gold" />
+                        <span className="text-xs font-medium text-charcoal">{p.rating}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* AI Suggestions */}
+            <Card className="border-0 shadow-sm bg-gradient-to-r from-terracotta/5 to-gold/5 rounded-2xl">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-terracotta/10 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-terracotta" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-charcoal mb-1">Suggestions IA</h3>
+                    <div className="space-y-2 text-sm text-charcoal/60">
+                      <p>\u2022 Les produits en cuir performent bien \u2014 envisagez d&apos;ajouter de nouvelles r\u00e9f\u00e9rences cette saison.</p>
+                      <p>\u2022 3 produits sont en stock bas ({summary.lowStockProducts}) \u2014 relancez les artisans pour le r\u00e9approvisionnement.</p>
+                      <p>\u2022 Le taux de conversion a augment\u00e9 de 12% ce mois \u2014 la nouvelle galerie 3D porte ses fruits.</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Products Tab */}
           <TabsContent value="products">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">All Products ({products.length})</h3>
-                  <div className="flex gap-2">
-                    <Input placeholder="Search products..." className="w-64 h-9" />
-                    <Button size="sm" variant="outline"><Download className="w-4 h-4 mr-1" /> Export CSV</Button>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-800">
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">Product</th>
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">Category</th>
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">Price</th>
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">Stock</th>
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">Rating</th>
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((product) => (
-                        <tr key={product.id} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex-shrink-0">
-                                {product.images !== '[]' ? (
-                                  <img src={(JSON.parse(product.images) as string[])[0]} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                    <Boxes className="w-5 h-5" />
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-medium">{product.name}</p>
-                                <p className="text-xs text-muted-foreground">{product.shortDesc}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <Badge variant="secondary">{product.category?.name || 'N/A'}</Badge>
-                          </td>
-                          <td className="py-3 px-3 font-medium">${product.price.toFixed(2)}</td>
-                          <td className="py-3 px-3">
-                            <span className={`font-medium ${product.stock <= 10 ? 'text-red-500' : product.stock <= 30 ? 'text-amber-500' : 'text-green-500'}`}>
-                              {product.stock}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                              <span>{product.rating}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { useAppStore.getState().selectProduct(product.id); setView('product'); }}>
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Edit3 className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            <Card className="border-0 shadow-sm bg-white rounded-2xl">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-charcoal">Tous les produits ({allProducts.length})</CardTitle>
+                <Button className="bg-terracotta hover:bg-terracotta-dark text-cream rounded-xl" size="sm">
+                  <Plus className="w-4 h-4 mr-1" /> Ajouter
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  {allProducts.map((product: any) => (
+                    <div key={product.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-sand/70 transition-colors">
+                      <div className="w-12 h-12 rounded-xl bg-sand overflow-hidden flex-shrink-0">
+                        {JSON.parse(product.images || '[]')[0] ? (
+                          <img src={JSON.parse(product.images || '[]')[0]} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-5 h-5 text-charcoal/20" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-charcoal truncate">{product.name}</p>
+                        <p className="text-xs text-charcoal/40">{product.category?.name}</p>
+                      </div>
+                      <div className="text-right hidden sm:block">
+                        <p className="text-sm font-semibold text-charcoal">{product.price.toLocaleString('fr-DZ')} DA</p>
+                        <p className="text-xs text-charcoal/40">{product.stock} en stock</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-charcoal/40 hover:text-terracotta rounded-lg">
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-charcoal/40 hover:text-red-500 rounded-lg">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -1555,127 +2388,113 @@ function AdminDashboard() {
 
           {/* Inventory Tab */}
           <TabsContent value="inventory">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Inventory Overview</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {products.map((product) => {
-                    const stockPercent = Math.min((product.stock / 100) * 100, 100);
-                    return (
-                      <div key={product.id} className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex-shrink-0">
-                            {product.images !== '[]' ? (
-                              <img src={(JSON.parse(product.images) as string[])[0]} alt="" className="w-full h-full object-cover" />
-                            ) : null}
-                          </div>
+            <Card className="border-0 shadow-sm bg-white rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-charcoal">Niveaux de stock</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {allProducts
+                    .sort((a: any, b: any) => a.stock - b.stock)
+                    .map((product: any) => {
+                      const stockLevel = product.stock === 0 ? 'empty' : product.stock <= 10 ? 'low' : 'ok';
+                      const colors = { empty: 'bg-red-100 text-red-600', low: 'bg-gold/15 text-gold', ok: 'bg-olive/10 text-olive' };
+                      return (
+                        <div key={product.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-sand/70 transition-colors">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">${product.price}</p>
+                            <p className="text-sm font-medium text-charcoal truncate">{product.name}</p>
+                            <p className="text-xs text-charcoal/40">{product.category?.name}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-24 h-2 bg-sand rounded-full overflow-hidden`}>
+                              <div
+                                className={`h-full rounded-full ${stockLevel === 'ok' ? 'bg-olive' : stockLevel === 'low' ? 'bg-gold' : 'bg-red-400'}`}
+                                style={{ width: `${Math.min(100, (product.stock / 50) * 100)}%` }}
+                              />
+                            </div>
+                            <Badge className={`${colors[stockLevel]} text-[10px] rounded-full px-2`}>
+                              {product.stock === 0 ? 'Rupture' : `${product.stock} unit\u00e9s`}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Stock Level</span>
-                            <span className={`font-medium ${product.stock <= 10 ? 'text-red-500' : product.stock <= 30 ? 'text-amber-500' : 'text-green-500'}`}>
-                              {product.stock} units
-                            </span>
-                          </div>
-                          <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${stockPercent}%` }}
-                              transition={{ duration: 0.5 }}
-                              className={`h-full rounded-full ${product.stock <= 10 ? 'bg-red-500' : product.stock <= 30 ? 'bg-amber-500' : 'bg-green-500'}`}
-                            />
-                          </div>
-                        </div>
-                        {product.stock <= 10 && (
-                          <div className="mt-2 flex items-center gap-1 text-xs text-red-500">
-                            <AlertTriangle className="w-3 h-3" />
-                            Low stock - consider restocking
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Reports Tab */}
-          <TabsContent value="reports">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Visitor Stats */}
-              <Card className="border-0 shadow-sm">
-                <CardHeader><CardTitle className="text-base">Visitor Analytics</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    {[
-                      { label: 'Total Visitors', value: analytics?.visitorStats?.totalVisitors?.toLocaleString() },
-                      { label: 'Unique Visitors', value: analytics?.visitorStats?.uniqueVisitors?.toLocaleString() },
-                      { label: 'Bounce Rate', value: `${analytics?.visitorStats?.bounceRate}%` },
-                      { label: 'Avg Session', value: analytics?.visitorStats?.avgSessionDuration },
-                    ].map((stat, i) => (
-                      <div key={i} className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                        <p className="text-xs text-muted-foreground">{stat.label}</p>
-                        <p className="text-lg font-bold">{stat.value}</p>
-                      </div>
-                    ))}
+          <TabsContent value="reports" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-terracotta" />
+                    Rapport des ventes
+                  </h3>
+                  <p className="text-sm text-charcoal/50 mb-4">Export d\u00e9taill\u00e9 des ventes par p\u00e9riode, cat\u00e9gorie et produit.</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> Excel
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* AI Suggestions */}
-              <Card className="border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-600" /> AI Suggestions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      { text: 'Consider running a 15% promotion on Ergonix Chair to boost Q2 sales', priority: 'high' },
-                      { text: 'Vertex Ultrabook Pro is low on stock - recommend restocking 50 units', priority: 'high' },
-                      { text: 'Aura Pro Headphones trending - increase ad spend by 20%', priority: 'medium' },
-                      { text: 'Nomad Backpack could benefit from a bundle deal with Lamp', priority: 'low' },
-                    ].map((suggestion, i) => (
-                      <div key={i} className="flex items-start gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                        <Badge variant={suggestion.priority === 'high' ? 'destructive' : suggestion.priority === 'medium' ? 'default' : 'secondary'} className="text-[10px] mt-0.5">
-                          {suggestion.priority}
-                        </Badge>
-                        <p className="text-sm">{suggestion.text}</p>
-                      </div>
-                    ))}
+              <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-gold" />
+                    Rapport d&apos;inventaire
+                  </h3>
+                  <p className="text-sm text-charcoal/50 mb-4">\u00c9tat des stocks, ruptures et r\u00e9approvisionnements n\u00e9cessaires.</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> Excel
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Export Options */}
-              <Card className="border-0 shadow-sm md:col-span-2">
-                <CardHeader><CardTitle className="text-base">Export Reports</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[
-                      { icon: FileText, label: 'Sales Report', format: 'PDF' },
-                      { icon: FileText, label: 'Inventory Report', format: 'CSV' },
-                      { icon: Users, label: 'Customer Report', format: 'PDF' },
-                      { icon: BarChart3, label: 'Analytics Report', format: 'CSV' },
-                    ].map((report, i) => (
-                      <button
-                        key={i}
-                        className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left"
-                        onClick={() => toast.success(`${report.label} exported as ${report.format}!`)}
-                      >
-                        <report.icon className="w-5 h-5 text-amber-600" />
-                        <div>
-                          <p className="font-medium text-sm">{report.label}</p>
-                          <p className="text-xs text-muted-foreground">{report.format}</p>
-                        </div>
-                      </button>
-                    ))}
+              <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-olive" />
+                    Rapport clients
+                  </h3>
+                  <p className="text-sm text-charcoal/50 mb-4">Analyse de la client\u00e8le, r\u00e9tention et programme fid\u00e9lit\u00e9.</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> Excel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm bg-white rounded-2xl">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-terracotta" />
+                    Analyse de performance
+                  </h3>
+                  <p className="text-sm text-charcoal/50 mb-4">M\u00e9triques cl\u00e9s, tendances et pr\u00e9visions saisonni\u00e8res.</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
+                      <Download className="w-4 h-4 mr-1" /> Excel
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1687,41 +2506,46 @@ function AdminDashboard() {
   );
 }
 
-// ===== MAIN PAGE =====
-export default function EcommercePage() {
+// =============================================
+// MAIN PAGE COMPONENT
+// =============================================
+export default function Page() {
   const { view } = useAppStore();
 
   const renderView = () => {
     switch (view) {
-      case 'home': return <HomeView />;
-      case 'catalog': return <CatalogView />;
-      case 'product': return <ProductDetailView />;
-      case 'checkout': return <CheckoutView />;
-      case 'profile': return <ProfileView />;
-      case 'orders': return <OrdersView />;
-      case 'admin': return <AdminDashboard />;
-      default: return <HomeView />;
+      case 'catalog':
+        return <CatalogView />;
+      case 'product':
+        return <ProductDetailView />;
+      case 'checkout':
+        return <CheckoutView />;
+      case 'profile':
+        return <ProfileView />;
+      case 'orders':
+        return <OrdersView />;
+      case 'admin':
+        return <AdminDashboardView />;
+      default:
+        return <HomeView />;
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950">
-      <Navbar />
-      <main className="flex-1">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={view}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            {renderView()}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-    </div>
+    <main className="min-h-screen bg-cream">
+      <DarnaNavbar />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={view}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderView()}
+        </motion.div>
+      </AnimatePresence>
+      <CartDrawer />
+    </main>
   );
 }
-
-

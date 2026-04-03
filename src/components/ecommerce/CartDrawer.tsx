@@ -7,14 +7,17 @@ import { Separator } from '@/components/ui/separator';
 import { useCartStore, type CartItem } from '@/stores/cart-store';
 import { useAppStore } from '@/stores/app-store';
 
+function formatDZD(price: number) {
+  return price.toLocaleString('fr-DZ');
+}
+
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, getTotal } = useCartStore();
   const { setView } = useAppStore();
 
   const subtotal = getTotal();
-  const shipping = subtotal > 500 ? 0 : 29.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  const shipping = subtotal > 5000 ? 0 : 500;
+  const total = subtotal + shipping;
 
   const handleCheckout = () => {
     closeCart();
@@ -25,31 +28,28 @@ export default function CartDrawer() {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeCart}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60]"
           />
-
-          {/* Drawer */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gray-900 z-[70] shadow-2xl flex flex-col"
+            transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-cream)] z-[70] shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between p-6 border-b border-[var(--color-gold)]/20 bg-[var(--color-sand)]">
               <div className="flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-amber-600" />
-                <h2 className="text-lg font-bold">Your Cart</h2>
-                <span className="text-sm text-muted-foreground">({items.length})</span>
+                <ShoppingBag className="w-5 h-5 text-[var(--color-terracotta)]" />
+                <h2 className="text-lg font-bold text-foreground">Votre Panier</h2>
+                <span className="text-sm text-muted-foreground font-medium">({items.length})</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={closeCart}>
+              <Button variant="ghost" size="icon" onClick={closeCart} className="text-muted-foreground hover:text-foreground">
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -58,17 +58,17 @@ export default function CartDrawer() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                    <ShoppingBag className="w-10 h-10 text-gray-400" />
+                  <div className="w-20 h-20 rounded-full bg-[var(--color-sand)] flex items-center justify-center mb-4">
+                    <ShoppingBag className="w-10 h-10 text-[var(--color-gold)] opacity-50" />
                   </div>
-                  <p className="text-lg font-medium text-gray-500">Cart is empty</p>
-                  <p className="text-sm text-muted-foreground mt-1">Add some items to get started</p>
+                  <p className="text-lg font-semibold text-foreground mb-1">Votre panier est vide</p>
+                  <p className="text-sm text-muted-foreground mb-4">Découvrez nos produits artisanaux</p>
                   <Button
                     variant="outline"
-                    className="mt-4"
+                    className="border-[var(--color-gold)] text-[var(--color-charcoal)] hover:bg-[var(--color-sand)]"
                     onClick={() => { closeCart(); setView('catalog'); }}
                   >
-                    Browse Products
+                    Parcourir la boutique
                   </Button>
                 </div>
               ) : (
@@ -85,42 +85,37 @@ export default function CartDrawer() {
 
             {/* Footer */}
             {items.length > 0 && (
-              <div className="border-t border-gray-200 dark:border-gray-800 p-6 space-y-4">
-                {/* Points earned */}
-                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                    Earn {Math.floor(total * 10)} points with this order!
+              <div className="border-t border-[var(--color-gold)]/20 p-6 space-y-4 bg-[var(--color-sand)]">
+                <div className="flex items-center gap-2 p-3 bg-[var(--color-gold)]/10 rounded-xl">
+                  <Sparkles className="w-4 h-4 text-[var(--color-gold)]" />
+                  <span className="text-sm font-medium text-[var(--color-charcoal)]">
+                    Vous gagnerez {Math.floor(total * 2)} points fidélité !
                   </span>
                 </div>
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>Sous-total</span>
+                    <span className="font-medium">{formatDZD(subtotal)} DA</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Shipping</span>
-                    <span>{shipping === 0 ? (
-                      <span className="text-green-600 font-medium">Free</span>
-                    ) : `$${shipping.toFixed(2)}`}</span>
+                    <span>Livraison</span>
+                    <span className={shipping === 0 ? 'text-[var(--color-olive)] font-semibold' : 'font-medium'}>
+                      {shipping === 0 ? 'Gratuite' : `${formatDZD(shipping)} DA`}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Tax</span>
-                    <span>${tax.toFixed(2)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
+                  <Separator className="bg-[var(--color-gold)]/20" />
+                  <div className="flex justify-between text-lg font-bold text-foreground">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>{formatDZD(total)} DA</span>
                   </div>
                 </div>
 
                 <Button
-                  className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold shadow-lg shadow-amber-500/25"
+                  className="w-full h-12 bg-[var(--color-terracotta)] hover:bg-[var(--color-terracotta-dark)] text-white font-semibold shadow-lg rounded-xl"
                   onClick={handleCheckout}
                 >
-                  Checkout <ArrowRight className="w-4 h-4 ml-2" />
+                  Passer la commande <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
             )}
@@ -142,55 +137,37 @@ function CartItemCard({ item, onUpdateQty, onRemove }: {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 100 }}
-      className="flex gap-4 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 group"
+      className="flex gap-4 p-3 rounded-xl bg-white border border-[var(--border)] group"
     >
-      <div className="w-20 h-20 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
+      <div className="w-20 h-20 rounded-lg bg-[var(--color-sand)] overflow-hidden flex-shrink-0">
         {item.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-            No image
-          </div>
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">Image</div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-sm truncate">{item.name}</h3>
-        {item.color && (
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color }} />
-            <span className="text-xs text-muted-foreground capitalize">{item.color === '#1a1a1a' ? 'Black' : item.color === '#c8c8c8' ? 'Silver' : item.color === '#8B4513' ? 'Brown' : 'Custom'}</span>
-          </div>
-        )}
+        <h3 className="font-medium text-sm truncate text-foreground">{item.name}</h3>
+        <p className="text-sm font-semibold text-[var(--color-terracotta)] mt-1">{formatDZD(item.price)} DA</p>
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onUpdateQty(item.quantity - 1)}
-            >
+            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => onUpdateQty(item.quantity - 1)}>
               <Minus className="w-3 h-3" />
             </Button>
-            <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onUpdateQty(item.quantity + 1)}
-            >
+            <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
+            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => onUpdateQty(item.quantity + 1)}>
               <Plus className="w-3 h-3" />
             </Button>
           </div>
-          <span className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</span>
+          <span className="font-semibold text-sm text-foreground">{formatDZD(item.price * item.quantity)} DA</span>
         </div>
       </div>
 
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
+        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 rounded-md"
         onClick={onRemove}
       >
         <Trash2 className="w-4 h-4" />

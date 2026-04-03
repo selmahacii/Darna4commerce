@@ -15,13 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LUXESTORE - Premium E-Commerce Platform",
-  description: "Discover premium products with 3D visualization, real-time customization, smart recommendations, and AI-powered analytics. The future of online shopping.",
-  keywords: ["LUXESTORE", "E-Commerce", "3D Products", "Premium", "Luxury", "Smart Shopping", "AI Recommendations"],
-  authors: [{ name: "LUXESTORE" }],
+  title: "Darna — L'Artisanat Algérien, Fait avec le Cœur",
+  description: "Découvrez les plus beaux produits artisanaux d'Algérie. Cuir, textiles, bijoux, luminaires — chaque pièce raconte l'histoire de nos mains. Livraison partout en Algérie.",
+  keywords: ["Darna", "artisanat", "Algérie", "artisanal", "cuir", "kabylie", "tlemcen", "amazigh", "babouches", "bijoux"],
+  authors: [{ name: "Darna" }],
   openGraph: {
-    title: "LUXESTORE - Premium E-Commerce Platform",
-    description: "Premium products with 3D visualization and AI-powered shopping experience",
+    title: "Darna — L'Artisanat Algérien",
+    description: "Des produits faits main par les meilleurs artisans d'Algérie",
     type: "website",
   },
 };
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

@@ -8,8 +8,6 @@ interface FilterState {
   minPrice: number;
   maxPrice: number;
   sortBy: 'newest' | 'price-asc' | 'price-desc' | 'popular' | 'rating';
-  colors: string[];
-  materials: string[];
 }
 
 interface AppState {
@@ -35,10 +33,8 @@ const defaultFilters: FilterState = {
   search: '',
   category: 'all',
   minPrice: 0,
-  maxPrice: 10000,
+  maxPrice: 50000,
   sortBy: 'newest',
-  colors: [],
-  materials: [],
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -47,9 +43,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedProductId: null,
   isAdmin: false,
   filters: defaultFilters,
-  currency: 'USD',
-  language: 'en',
-
+  currency: 'DZD',
+  language: 'fr',
   setView: (view) => set({ previousView: get().view, view }),
   goBack: () => {
     const prev = get().previousView;

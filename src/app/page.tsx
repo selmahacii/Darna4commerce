@@ -385,11 +385,11 @@ function DarnaNavbar() {
             >
               <DarnaLogo className="w-9 h-9 group-hover:scale-105 transition-transform" />
               <div className="hidden sm:block">
-                <span className="text-xl font-bold tracking-tight text-charcoal">
-                  Darna
+                <span className="text-xl font-serif font-bold tracking-tight text-charcoal">
+                  Darna <span className="text-terracotta">for commerce</span>
                 </span>
                 <span className="block text-[10px] text-terracotta -mt-0.5 tracking-widest uppercase">
-                  \u062f\u0627\u0631\u0646\u0627
+                  دارنا للاعمال
                 </span>
               </div>
             </button>
@@ -634,9 +634,9 @@ function DarnaFooter() {
             <div className="flex items-center gap-2.5 mb-4">
               <DarnaLogo className="w-9 h-9" />
               <div>
-                <span className="text-xl font-bold text-cream">Darna</span>
+                <span className="text-xl font-serif font-bold text-cream">Darna <span className="text-gold font-sans">for commerce</span></span>
                 <span className="block text-[10px] text-gold -mt-0.5 tracking-widest uppercase">
-                  \u062f\u0627\u0631\u0646\u0627
+                  دارنا للاعمال
                 </span>
               </div>
             </div>
@@ -702,7 +702,7 @@ function DarnaFooter() {
 
         <Separator className="bg-cream/10 mb-6" />
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-cream/40">
-          <p>\u00a9 2025 Darna (\u062f\u0627\u0631\u0646\u0627). Fait avec amour en Alg\u00e9rie.</p>
+          <p>&copy; 2025 Darna for commerce. Fait avec amour par Selma Haci. Licence : Selma Haci.</p>
           <div className="flex gap-6">
             <p className="hover:text-cream/70 cursor-pointer transition-colors">Confidentialit\u00e9</p>
             <p className="hover:text-cream/70 cursor-pointer transition-colors">CGV</p>
@@ -791,8 +791,8 @@ function HomeView() {
               <motion.span className="block" initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.8, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}>
                 Bienvenue chez
               </motion.span>
-              <motion.span className="block text-transparent bg-clip-text bg-gradient-to-r from-terracotta-light via-gold to-terracotta-light" initial={{ opacity: 0, y: 50, filter: 'blur(10px)', scale: 0.8 }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)', scale: 1 }} transition={{ delay: 1.0, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}>
-                Darna
+              <motion.span className="block text-transparent bg-clip-text bg-gradient-to-r from-terracotta-light via-gold to-terracotta-light font-serif" initial={{ opacity: 0, y: 50, filter: 'blur(10px)', scale: 0.8 }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)', scale: 1 }} transition={{ delay: 1.0, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}>
+                Darna <span className="text-sm font-sans tracking-wide">for commerce</span>
               </motion.span>
             </h1>
 
@@ -1012,14 +1012,14 @@ function HomeView() {
               <div className="h-px w-16 bg-gold/40" />
             </div>
 
-            <blockquote className="text-xl md:text-2xl lg:text-3xl text-charcoal/80 font-light leading-relaxed italic mb-8">
+            <blockquote className="text-xl md:text-2xl lg:text-3xl text-charcoal/80 font-serif leading-relaxed italic mb-8">
               &laquo; L&apos;artisanat n&apos;est pas qu&apos;un m\u00e9tier \u2014 c&apos;est un h\u00e9ritage vivant qui relie nos mains \u00e0 celles de nos anc\u00eatres. Chez Darna, chaque tresse, chaque point de couture, chaque coup de ciseau porte en lui la m\u00e9moire de notre terre. &raquo;
             </blockquote>
 
             <div className="flex items-center justify-center gap-3">
               <div className="w-12 h-0.5 bg-terracotta/30 rounded-full" />
               <p className="text-sm text-charcoal/50 font-medium">
-                Amira B. \u2014 Fondatrice, Darna
+                Amira B. &mdash; Fondatrice, Darna for commerce
               </p>
               <div className="w-12 h-0.5 bg-terracotta/30 rounded-full" />
             </div>

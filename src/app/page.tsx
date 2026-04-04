@@ -8,14 +8,14 @@ import {
   Star, Heart, Share2, Truck, Shield, RotateCcw, ChevronRight,
   ShoppingBag, Package, Award, TrendingUp, Users,
   BarChart3, Settings, Eye, Edit3, Trash2, Plus,
-  Download, Sparkles, Zap, Gift,
-  Crown, Flame, LayoutGrid, FileText,
+  Sparkles, Zap, Gift,
+  Crown, Flame, LayoutGrid,
   Store, CheckCircle2, Clock, ChevronLeft, Trophy,
   HandMetal, TruckIcon, Menu, Globe, ChevronDown, BoxSelect,
   Instagram, Facebook, Mail, Phone, MapPin,
   CreditCard, Banknote, User, Map,
   Home, Calendar, ArrowUpRight, Percent,
-  Wallet, Layers, Gem, BookOpen
+  Wallet, Layers, Gem
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,17 @@ import AdminDashboard from '@/components/ecommerce/AdminDashboard';
 
 // Backend API helper — routes all calls to Node.js backend on port 3003
 const BACKEND_PORT = '3003';
-const api = (path: string, options?: RequestInit) => fetch(`${path}${path.includes('?') ? '&' : '?'}XTransformPort=${BACKEND_PORT}`, options);
+const api = (path: string, options?: RequestInit) => {
+  const token = useAppStore.getState().auth.token;
+  return fetch(`${path}${path.includes('?') ? '&' : '?'}XTransformPort=${BACKEND_PORT}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+  });
+};
 import { useCartStore } from '@/stores/cart-store';
 import ProductCard from '@/components/ecommerce/ProductCard';
 import CartDrawer from '@/components/ecommerce/CartDrawer';
@@ -2009,15 +2019,11 @@ function CheckoutView() {
 // PROFILE / REWARDS VIEW
 // =============================================
 function ProfileView() {
-  const { setView } = useAppStore();
-  const [user] = useState({
-    name: 'Amira Benali',
-    email: 'amira@darna.dz',
-    points: 2450,
-    level: 3,
-    memberSince: 'Janvier 2024',
-    totalOrders: 12,
-  });
+  const { setView, auth, isAuthenticated: isAuthenticatedFn } = useAppStore();
+  const isLoggedIn = isAuthenticatedFn();
+  const user = auth.user;
+  const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
+  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '';
 
   const badges = [
     { name: 'Premier Achat', icon: Gift, desc: 'Premi\u00e8re commande', earned: true, color: 'terracotta' },
@@ -2036,8 +2042,27 @@ function ProfileView() {
     { name: 'Sofiane H.', points: 1900, avatar: 'SH' },
   ];
 
-  const pointsToNextLevel = 5000;
-  const progressPercent = Math.min(100, (user.points / pointsToNextLevel) * 100);
+  const pointsToNextLevel = (user?.level || 1) * 1000 + 1000;
+  const progressPercent = Math.min(100, ((user?.points || 0) / pointsToNextLevel) * 100);
+
+  if (!isLoggedIn || !user) {
+    return (
+      <div className="pt-20 min-h-screen bg-cream flex items-center justify-center">
+        <Card className="max-w-md mx-4 border-0 shadow-xl rounded-2xl">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-terracotta/10 flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-terracotta" />
+            </div>
+            <h2 className="text-xl font-bold text-charcoal mb-2">Connexion requise</h2>
+            <p className="text-charcoal/50 text-sm mb-4">Connectez-vous pour acc\u00e9der \u00e0 votre espace fid\u00e9lit\u00e9.</p>
+            <Button className="bg-terracotta hover:bg-terracotta-dark text-white rounded-xl" onClick={() => setView('home')}>
+              Retour \u00e0 l&apos;accueil
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-20 min-h-screen bg-cream">
@@ -2056,24 +2081,20 @@ function ProfileView() {
               </div>
               <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
                 <div className="w-16 h-16 rounded-2xl bg-cream/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
-                  AB
+                  {initials}
                 </div>
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{user.name}</h2>
                   <p className="text-cream/70 text-sm">{user.email}</p>
-                  <p className="text-cream/50 text-xs mt-1">Membre depuis {user.memberSince}</p>
+                  {memberSince && <p className="text-cream/50 text-xs mt-1">Membre depuis {memberSince}</p>}
                 </div>
                 <div className="flex gap-6 text-center">
                   <div>
-                    <p className="text-2xl font-bold">{user.points.toLocaleString('fr-DZ')}</p>
+                    <p className="text-2xl font-bold">{(user.points || 0).toLocaleString('fr-DZ')}</p>
                     <p className="text-xs text-cream/60">Points</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{user.totalOrders}</p>
-                    <p className="text-xs text-cream/60">Commandes</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">Niv. {user.level}</p>
+                    <p className="text-2xl font-bold">Niv. {user.level || 1}</p>
                     <p className="text-xs text-cream/60">Niveau</p>
                   </div>
                 </div>
@@ -2092,8 +2113,8 @@ function ProfileView() {
           <Card className="border-0 shadow-sm bg-white rounded-2xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-charcoal">Progr\u00e8s vers le Niveau {user.level + 1}</h3>
-                <span className="text-sm text-charcoal/50">{user.points.toLocaleString('fr-DZ')} / {pointsToNextLevel.toLocaleString('fr-DZ')} pts</span>
+                <h3 className="font-semibold text-charcoal">Progr\u00e8s vers le Niveau {(user.level || 1) + 1}</h3>
+                <span className="text-sm text-charcoal/50">{(user.points || 0).toLocaleString('fr-DZ')} / {pointsToNextLevel.toLocaleString('fr-DZ')} pts</span>
               </div>
               <div className="h-3 bg-sand rounded-full overflow-hidden">
                 <motion.div
@@ -2103,7 +2124,7 @@ function ProfileView() {
                   className="h-full bg-gradient-to-r from-terracotta to-gold rounded-full"
                 />
               </div>
-              <p className="text-xs text-charcoal/40 mt-2">Encore {(pointsToNextLevel - user.points).toLocaleString('fr-DZ')} points pour le prochain niveau</p>
+              <p className="text-xs text-charcoal/40 mt-2">Encore {Math.max(0, pointsToNextLevel - (user.points || 0)).toLocaleString('fr-DZ')} points pour le prochain niveau</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -2316,415 +2337,10 @@ function OrdersView() {
 }
 
 // =============================================
-// ADMIN DASHBOARD
-// =============================================
-function AdminDashboardView() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-
-  useEffect(() => {
-    Promise.all([
-      api('/api/analytics/summary').then(r => r.json()),
-      api('/api/products?limit=50').then(r => r.json()),
-    ]).then(([analytics, productsData]) => {
-      setData({ ...analytics, allProducts: productsData.products || [] });
-      setLoading(false);
-    }).catch((err) => {
-      setLoading(false);
-      toast.error('Erreur de chargement', { description: 'Veuillez réessayer' });
-    });
-  }, []);
-
-  if (loading || !data) {
-    return (
-      <div className="pt-20 min-h-screen bg-cream">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-2xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const { summary, salesByCategory, recentOrders, topProducts, monthlySales, allProducts } = data;
-  const maxSale = Math.max(...monthlySales.map((m: any) => m.sales));
-
-  return (
-    <div className="pt-20 min-h-screen bg-cream">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-charcoal">Tableau de bord</h1>
-            <p className="text-charcoal/50 text-sm mt-1">Bienvenue, Admin Darna</p>
-          </div>
-          <Button variant="outline" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-            <Download className="w-4 h-4 mr-2" />
-            Exporter
-          </Button>
-        </div>
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          {[
-            { label: 'Revenus', value: `${summary.totalRevenue.toLocaleString('fr-DZ')} DA`, icon: TrendingUp, change: '+12%', color: 'terracotta' },
-            { label: 'Commandes', value: String(summary.totalOrders), icon: ShoppingBag, change: '+8%', color: 'gold' },
-            { label: 'Produits', value: String(summary.totalProducts), icon: Package, change: '+2', color: 'olive' },
-            { label: 'Note Moyenne', value: `${(summary.avgRating || 0).toFixed(1)}/5`, icon: Star, change: '+0.2', color: 'terracotta' },
-          ].map((kpi, i) => (
-            <motion.div
-              key={kpi.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * i }}
-            >
-              <Card className="border-0 shadow-sm bg-white rounded-2xl hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`w-10 h-10 rounded-xl ${getColor(kpi.color).bg} flex items-center justify-center`}>
-                      <kpi.icon className={`w-5 h-5 ${getColor(kpi.color).text}`} />
-                    </div>
-                    <Badge className="bg-olive/10 text-olive border-olive/20 rounded-full text-xs">
-                      {kpi.change}
-                    </Badge>
-                  </div>
-                  <p className="text-2xl font-bold text-charcoal">{kpi.value}</p>
-                  <p className="text-xs text-charcoal/40 mt-1">{kpi.label}</p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-sand rounded-xl mb-6">
-            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
-              Vue d&apos;ensemble
-            </TabsTrigger>
-            <TabsTrigger value="products" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
-              Produits
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
-              Stock
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
-              Rapports
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Sales Chart */}
-            <Card className="border-0 shadow-sm bg-white rounded-2xl">
-              <CardHeader>
-                <CardTitle className="text-charcoal flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-terracotta" />
-                  Ventes mensuelles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end gap-3 h-48">
-                  {monthlySales.map((m: any, i: number) => (
-                    <div key={m.month} className="flex-1 flex flex-col items-center gap-2">
-                      <span className="text-[10px] text-charcoal/40 font-medium">
-                        {(m.sales / 1000).toFixed(0)}k
-                      </span>
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: `${(m.sales / maxSale) * 100}%` }}
-                        transition={{ duration: 0.8, delay: i * 0.1 }}
-                        className="w-full bg-gradient-to-t from-terracotta to-terracotta-light rounded-t-lg min-h-[4px]"
-                      />
-                      <span className="text-xs text-charcoal/50">{m.month}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Category Distribution + Recent Orders */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Category Distribution */}
-              <Card className="border-0 shadow-sm bg-white rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="text-charcoal text-base">R\u00e9partition par cat\u00e9gorie</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {salesByCategory.map((cat: any) => {
-                      const totalSales = salesByCategory.reduce((s: number, c: any) => s + c.sales, 0);
-                      const pct = totalSales > 0 ? (cat.sales / totalSales) * 100 : 0;
-                      return (
-                        <div key={cat.name} className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-charcoal/70">{cat.name}</span>
-                            <span className="font-medium text-charcoal">{cat.sales.toLocaleString('fr-DZ')} DA</span>
-                          </div>
-                          <div className="h-2 bg-sand rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.8 }}
-                              className="h-full bg-gradient-to-r from-terracotta to-gold rounded-full"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Recent Orders */}
-              <Card className="border-0 shadow-sm bg-white rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="text-charcoal text-base">Commandes r\u00e9centes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {recentOrders.map((order: any) => (
-                      <div key={order.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-sand/70 transition-colors">
-                        <div>
-                          <p className="text-sm font-medium text-charcoal">#{order.id.slice(0, 8).toUpperCase()}</p>
-                          <p className="text-xs text-charcoal/40">{order.user?.name || 'Client'}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-charcoal">{order.total.toLocaleString('fr-DZ')} DA</p>
-                          <Badge className={`${order.status === 'pending' ? 'bg-gold/15 text-gold' : 'bg-olive/15 text-olive'} text-[10px] rounded-full`}>
-                            {order.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top Products */}
-            <Card className="border-0 shadow-sm bg-white rounded-2xl">
-              <CardHeader>
-                <CardTitle className="text-charcoal flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-gold" />
-                  Produits les plus populaires
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                  {topProducts.map((p: any, i: number) => (
-                    <div key={p.id} className="flex items-center gap-3 p-3 bg-sand/70 rounded-xl">
-                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
-                        i === 0 ? 'bg-gold/20 text-gold' : 'bg-charcoal/10 text-charcoal/50'
-                      }`}>{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-charcoal truncate">{p.name}</p>
-                        <p className="text-[10px] text-charcoal/40">{p.stock} en stock</p>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <Star className="w-3 h-3 fill-gold text-gold" />
-                        <span className="text-xs font-medium text-charcoal">{p.rating}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* AI Suggestions */}
-            <Card className="border-0 shadow-sm bg-gradient-to-r from-terracotta/5 to-gold/5 rounded-2xl">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-terracotta/10 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-terracotta" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-charcoal mb-1">Suggestions IA</h3>
-                    <div className="space-y-2 text-sm text-charcoal/60">
-                      <p>\u2022 Les produits en cuir performent bien \u2014 envisagez d&apos;ajouter de nouvelles r\u00e9f\u00e9rences cette saison.</p>
-                      <p>\u2022 3 produits sont en stock bas ({summary.lowStockProducts}) \u2014 relancez les artisans pour le r\u00e9approvisionnement.</p>
-                      <p>\u2022 Le taux de conversion a augment\u00e9 de 12% ce mois \u2014 la nouvelle galerie 3D porte ses fruits.</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Products Tab */}
-          <TabsContent value="products">
-            <Card className="border-0 shadow-sm bg-white rounded-2xl">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-charcoal">Tous les produits ({allProducts.length})</CardTitle>
-                <Button className="bg-terracotta hover:bg-terracotta-dark text-cream rounded-xl" size="sm">
-                  <Plus className="w-4 h-4 mr-1" /> Ajouter
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                  {allProducts.map((product: any) => (
-                    <div key={product.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-sand/70 transition-colors">
-                      <div className="w-12 h-12 rounded-xl bg-sand overflow-hidden flex-shrink-0">
-                        {safeJSONParse(product.images || '[]', [])[0] ? (
-                          <img src={safeJSONParse(product.images || '[]', [])[0]} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-5 h-5 text-charcoal/20" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-charcoal truncate">{product.name}</p>
-                        <p className="text-xs text-charcoal/40">{product.category?.name}</p>
-                      </div>
-                      <div className="text-right hidden sm:block">
-                        <p className="text-sm font-semibold text-charcoal">{product.price.toLocaleString('fr-DZ')} DA</p>
-                        <p className="text-xs text-charcoal/40">{product.stock} en stock</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-charcoal/40 hover:text-terracotta rounded-lg">
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-charcoal/40 hover:text-red-500 rounded-lg">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Inventory Tab */}
-          <TabsContent value="inventory">
-            <Card className="border-0 shadow-sm bg-white rounded-2xl">
-              <CardHeader>
-                <CardTitle className="text-charcoal">Niveaux de stock</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {allProducts
-                    .sort((a: any, b: any) => a.stock - b.stock)
-                    .map((product: any) => {
-                      const stockLevel = product.stock === 0 ? 'empty' : product.stock <= 10 ? 'low' : 'ok';
-                      const colors = { empty: 'bg-red-100 text-red-600', low: 'bg-gold/15 text-gold', ok: 'bg-olive/10 text-olive' };
-                      return (
-                        <div key={product.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-sand/70 transition-colors">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-charcoal truncate">{product.name}</p>
-                            <p className="text-xs text-charcoal/40">{product.category?.name}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-24 h-2 bg-sand rounded-full overflow-hidden`}>
-                              <div
-                                className={`h-full rounded-full ${stockLevel === 'ok' ? 'bg-olive' : stockLevel === 'low' ? 'bg-gold' : 'bg-red-400'}`}
-                                style={{ width: `${Math.min(100, (product.stock / 50) * 100)}%` }}
-                              />
-                            </div>
-                            <Badge className={`${colors[stockLevel]} text-[10px] rounded-full px-2`}>
-                              {product.stock === 0 ? 'Rupture' : `${product.stock} unit\u00e9s`}
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Reports Tab */}
-          <TabsContent value="reports" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-0 shadow-sm bg-white rounded-2xl">
-                <CardContent className="p-6">
-                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-terracotta" />
-                    Rapport des ventes
-                  </h3>
-                  <p className="text-sm text-charcoal/50 mb-4">Export d\u00e9taill\u00e9 des ventes par p\u00e9riode, cat\u00e9gorie et produit.</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> PDF
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> Excel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-sm bg-white rounded-2xl">
-                <CardContent className="p-6">
-                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-gold" />
-                    Rapport d&apos;inventaire
-                  </h3>
-                  <p className="text-sm text-charcoal/50 mb-4">\u00c9tat des stocks, ruptures et r\u00e9approvisionnements n\u00e9cessaires.</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> PDF
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> Excel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-sm bg-white rounded-2xl">
-                <CardContent className="p-6">
-                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-olive" />
-                    Rapport clients
-                  </h3>
-                  <p className="text-sm text-charcoal/50 mb-4">Analyse de la client\u00e8le, r\u00e9tention et programme fid\u00e9lit\u00e9.</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> PDF
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> Excel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-sm bg-white rounded-2xl">
-                <CardContent className="p-6">
-                  <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-terracotta" />
-                    Analyse de performance
-                  </h3>
-                  <p className="text-sm text-charcoal/50 mb-4">M\u00e9triques cl\u00e9s, tendances et pr\u00e9visions saisonni\u00e8res.</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> PDF
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-terracotta/15 text-terracotta hover:bg-terracotta/5 rounded-xl">
-                      <Download className="w-4 h-4 mr-1" /> Excel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-}
-
-// =============================================
 // MAIN PAGE COMPONENT
 // =============================================
 export default function Page() {
-  const { view, isAdmin: isAdminFn } = useAppStore();
-  const isAdmin = isAdminFn();
+  const { view } = useAppStore();
 
   const renderView = () => {
     switch (view) {
@@ -2739,14 +2355,14 @@ export default function Page() {
       case 'orders':
         return <OrdersView />;
       case 'admin':
-        return isAdmin() && <AdminDashboardView />;
+        return <AdminDashboard />;
       default:
         return <HomeView />;
     }
   };
 
   return (
-    <main className="min-h-screen bg-cream relative">
+    <main className="min-h-screen flex flex-col bg-cream relative">
       <ScrollProgress />
       <FloatingParticles />
       <DarnaNavbar />
@@ -2757,11 +2373,13 @@ export default function Page() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.98 }}
           transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="flex-1"
         >
           {renderView()}
         </motion.div>
       </AnimatePresence>
       <CartDrawer />
+      <DarnaFooter />
     </main>
   );
 }

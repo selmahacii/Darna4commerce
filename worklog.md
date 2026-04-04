@@ -1,7 +1,31 @@
 ---
-Task ID: 1
+Task ID: 4
 Agent: Main Agent
-Task: Make Darna e-commerce site impressive with 3D animations and user interaction
+Task: Complete store management - admin exclusive interface, client accounts, auth flow, sticky footer, code cleanup
+
+Work Log:
+- Analyzed full project state: page.tsx (2767 lines), AdminDashboard.tsx, app-store.ts, backend auth routes
+- Fixed `api()` helper in page.tsx to include JWT auth token from app store on every request
+- Fixed ProfileView to use real authenticated user data from `auth.user` instead of hardcoded mock data
+- Added auth guard to ProfileView - redirects unauthenticated users to home with login prompt
+- Replaced old inline `AdminDashboardView` (~404 lines) with proper imported `AdminDashboard` component
+- Fixed `renderView` admin case: removed redundant `isAdmin()` guard (component handles it internally)
+- Removed unused imports (Download, FileText, BookOpen) from page.tsx after cleanup
+- Added `DarnaFooter` to main page layout with sticky footer behavior (flexbox min-h-screen + flex-1)
+- Changed main wrapper to `min-h-screen flex flex-col` for proper sticky footer
+- Fixed 6 lint errors in AdminDashboard.tsx (react-hooks/set-state-in-effect) by wrapping setState in async callbacks with cleanup
+- Fixed 1 lint error in backend auth.ts (@typescript-eslint/no-namespace) with eslint-disable directive
+- Verified all API endpoints: login, products, categories, analytics, users - all returning correct data
+- Restarted backend on port 3003 and confirmed stability
+- All lint passes clean (0 errors, 0 warnings)
+
+Stage Summary:
+- **Admin Exclusive Interface**: Uses `AdminDashboard` component with built-in auth guard - only users with `role === 'admin'` can access. Non-admin users see "Accès Refusé" screen. Admin dashboard has 5 tabs: Overview (KPIs, charts), Products (CRUD), Orders (status management), Users (activate/deactivate), Categories (CRUD).
+- **Client Account System**: Login/Register dialog in navbar, JWT auth stored in Zustand with persistence, ProfileView shows real user data (name, points, level), auth tokens sent with all API requests.
+- **Auth Flow**: Register → auto-login with JWT, Login → token stored in app store, All authenticated requests include `Authorization: Bearer <token>`, Session restored on page reload via `restoreSession()`.
+- **Sticky Footer**: `flex flex-col min-h-screen` wrapper + `flex-1` on content area + `mt-auto` on footer ensures footer sticks to bottom.
+- **Code Quality**: Removed ~404 lines of duplicate code, fixed all 7 lint errors, clean compilation.
+- **Demo Credentials**: admin@darna.dz/admin123 (admin), amina@email.com/amina123 (customer)
 
 Work Log:
 - Read and analyzed the full 2551-line page.tsx and all component files

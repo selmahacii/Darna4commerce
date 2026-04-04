@@ -135,8 +135,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeTab === 'overview') {
-      setLoading(true);
-      Promise.all([fetchAnalytics()]).finally(() => setLoading(false));
+      let cancelled = false;
+      (async () => {
+        setLoading(true);
+        await fetchAnalytics();
+        if (!cancelled) setLoading(false);
+      })();
+      return () => { cancelled = true; };
     }
   }, [activeTab, fetchAnalytics]);
 
@@ -367,8 +372,17 @@ function ProductsTab() {
   }, [search]);
 
   useEffect(() => {
-    loadProducts();
-    api('/api/categories').then(r => r.json()).then(setCategories).catch(() => {});
+    let cancelled = false;
+    const init = async () => {
+      await loadProducts();
+      if (cancelled) return;
+      try {
+        const res = await api('/api/categories');
+        if (res.ok && !cancelled) setCategories(await res.json());
+      } catch { /* ignore */ }
+    };
+    init();
+    return () => { cancelled = true; };
   }, [loadProducts]);
 
   const handleDelete = async (id: string) => {
@@ -600,11 +614,20 @@ function OrdersTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    api('/api/orders').then(r => r.json()).then((data) => {
-      setOrders(Array.isArray(data) ? data : []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await api('/api/orders');
+        if (!cancelled) {
+          const data = await res.json();
+          setOrders(Array.isArray(data) ? data : []);
+        }
+      } catch { /* ignore */ }
+      if (!cancelled) setLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
   }, []);
 
   const updateStatus = async (orderId: string, status: string) => {
@@ -717,11 +740,20 @@ function UsersTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    api('/api/users').then(r => r.json()).then((data) => {
-      setUsers(Array.isArray(data) ? data : []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await api('/api/users');
+        if (!cancelled) {
+          const data = await res.json();
+          setUsers(Array.isArray(data) ? data : []);
+        }
+      } catch { /* ignore */ }
+      if (!cancelled) setLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
   }, []);
 
   const toggleActive = async (userId: string, currentState: boolean) => {
@@ -836,7 +868,14 @@ function CategoriesTab() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadCategories(); }, [loadCategories]);
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      await loadCategories();
+    };
+    if (!cancelled) init();
+    return () => { cancelled = true; };
+  }, [loadCategories]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer cette cat\u00e9gorie ?')) return;

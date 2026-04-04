@@ -29,6 +29,10 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, type View } from '@/stores/app-store';
+
+// Backend API helper — routes all calls to Node.js backend on port 3003
+const BACKEND_PORT = '3003';
+const api = (path: string, options?: RequestInit) => fetch(`${path}${path.includes('?') ? '&' : '?'}XTransformPort=${BACKEND_PORT}`, options);
 import { useCartStore } from '@/stores/cart-store';
 import ProductCard from '@/components/ecommerce/ProductCard';
 import CartDrawer from '@/components/ecommerce/CartDrawer';
@@ -551,8 +555,8 @@ function HomeView() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/products?featured=true&limit=4').then(r => r.json()),
-      fetch('/api/categories').then(r => r.json()),
+      api('/api/products?featured=true&limit=4').then(r => r.json()),
+      api('/api/categories').then(r => r.json()),
     ]).then(([prodData, catData]) => {
       setFeaturedProducts(prodData.products || []);
       setCategories(catData || []);
@@ -921,7 +925,7 @@ function CatalogView() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    fetch('/api/categories').then(r => r.json()).then(setCategories).catch(() => {});
+    api('/api/categories').then(r => r.json()).then(setCategories).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -938,7 +942,7 @@ function CatalogView() {
           page: String(page),
           limit: '12',
         });
-        const res = await fetch(`/api/products?${params}`);
+        const res = await api(`/api/products?${params}`);
         const data = await res.json();
         if (!cancelled) {
           setProducts(data.products || []);
@@ -1155,8 +1159,8 @@ function ProductDetailView() {
     const load = async () => {
       try {
         const [prodRes, recRes] = await Promise.all([
-          fetch(`/api/products/${selectedProductId}`).then(r => r.json()),
-          fetch(`/api/ai/recommendations?productId=${selectedProductId}`).then(r => r.json()),
+          api(`/api/products/${selectedProductId}`).then(r => r.json()),
+          api(`/api/ai/recommendations?productId=${selectedProductId}`).then(r => r.json()),
         ]);
         if (!cancelled) {
           setProduct(prodRes.product);
@@ -1548,7 +1552,7 @@ function CheckoutView() {
 
   const placeOrder = async () => {
     try {
-      const res = await fetch('/api/orders', {
+      const res = await api('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2040,7 +2044,7 @@ function OrdersView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/orders')
+    api('/api/orders')
       .then(r => r.json())
       .then(data => { setOrders(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
@@ -2150,8 +2154,8 @@ function AdminDashboardView() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/analytics/summary').then(r => r.json()),
-      fetch('/api/products?limit=50').then(r => r.json()),
+      api('/api/analytics/summary').then(r => r.json()),
+      api('/api/products?limit=50').then(r => r.json()),
     ]).then(([analytics, productsData]) => {
       setData({ ...analytics, allProducts: productsData.products || [] });
       setLoading(false);

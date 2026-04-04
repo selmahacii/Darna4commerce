@@ -34,10 +34,10 @@ import { safeJSONParse } from '@/lib/format';
 import AdminDashboard from '@/components/ecommerce/AdminDashboard';
 
 // Backend API helper — routes all calls to Node.js backend on port 3003
-const BACKEND_PORT = '3003';
+const BACKEND_URL = 'http://localhost:3003';
 const api = (path: string, options?: RequestInit) => {
   const token = useAppStore.getState().auth.token;
-  return fetch(`${path}${path.includes('?') ? '&' : '?'}XTransformPort=${BACKEND_PORT}`, {
+  return fetch(`${BACKEND_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -134,16 +134,16 @@ function formatPrice(amount: number, currency: string): string {
 
 const WILAYAS = [
   '01 - Adrar','02 - Chlef','03 - Laghouat','04 - Oum El Bouaghi','05 - Batna',
-  '06 - B\u00e9ja\u00efa','07 - Biskra','08 - B\u00e9char','09 - Blida','10 - Bouira',
-  '11 - Tamanrasset','12 - T\u00e9bessa','13 - Tlemcen','14 - Tiaret','15 - Tizi Ouzou',
-  '16 - Alger','17 - Djelfa','18 - Jijel','19 - S\u00e9tif','20 - Sa\u00efda',
-  '21 - Skikda','22 - Sidi Bel Abb\u00e8s','23 - Annaba','24 - Guelma','25 - Constantine',
-  '26 - M\u00e9d\u00e9a','27 - Mostaganem','28 - M\'Sila','29 - Mascara','30 - Ouargla',
-  '31 - Oran','32 - El Bayadh','33 - Illizi','34 - Bordj Bou Arr\u00e9ridj','35 - Boumerd\u00e8s',
+  '06 - Béja\u00efa','07 - Biskra','08 - Béchar','09 - Blida','10 - Bouira',
+  '11 - Tamanrasset','12 - Tébessa','13 - Tlemcen','14 - Tiaret','15 - Tizi Ouzou',
+  '16 - Alger','17 - Djelfa','18 - Jijel','19 - Sétif','20 - Sa\u00efda',
+  '21 - Skikda','22 - Sidi Bel Abbès','23 - Annaba','24 - Guelma','25 - Constantine',
+  '26 - Médéa','27 - Mostaganem','28 - M\'Sila','29 - Mascara','30 - Ouargla',
+  '31 - Oran','32 - El Bayadh','33 - Illizi','34 - Bordj Bou Arréridj','35 - Boumerdès',
   '36 - El Tarf','37 - Tindouf','38 - Tissemsilt','39 - El Oued','40 - Khenchela',
   '41 - Souk Ahras','42 - Tipaza','43 - Mila','44 - A\u00efn Defla','45 - Na\u00e2ma',
-  '46 - A\u00efn T\u00e9mouchent','47 - Gharda\u00efa','48 - Relizane','49 - El M\'Ghair','50 - El Meniaa',
-  '51 - Ouled Djellal','52 - Bordj Badji Mokhtar','53 - B\u00e9ni Abb\u00e8s','54 - Timimoun','55 - Touggourt',
+  '46 - A\u00efn Témouchent','47 - Gharda\u00efa','48 - Relizane','49 - El M\'Ghair','50 - El Meniaa',
+  '51 - Ouled Djellal','52 - Bordj Badji Mokhtar','53 - Béni Abbès','54 - Timimoun','55 - Touggourt',
   '56 - Djanet','57 - In Salah','58 - In Guezzam'
 ];
 
@@ -216,7 +216,7 @@ function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const fd = new FormData(e.currentTarget);
+    const fd = new FormData(e.currentTarget as HTMLFormElement);
     const email = fd.get('email') as string;
     const password = fd.get('password') as string;
     const success = await login(email, password);
@@ -232,7 +232,7 @@ function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const fd = new FormData(e.currentTarget);
+    const fd = new FormData(e.currentTarget as HTMLFormElement);
     const name = fd.get('name') as string;
     const email = fd.get('email') as string;
     const password = fd.get('password') as string;
@@ -331,7 +331,7 @@ function DarnaNavbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
-  const { view, setView, isAdmin: isAdminFn, isAuthenticated: isAuthenticatedFn, setCurrency, currency, filters, setFilters, auth, login, register, logout } = useAppStore();
+  const { view, setView, isAdmin: isAdminFn, isAuthenticated: isAuthenticatedFn, setCurrency, currency, filters, setFilters, resetFilters, auth, login, register, logout } = useAppStore();
   const isAdmin = isAdminFn();
   const isLoggedIn = isAuthenticatedFn();
   const user = auth.user;
@@ -359,9 +359,9 @@ function DarnaNavbar() {
   };
 
   const navLinks = [
-    { label: 'Boutique', view: 'catalog' as View },
-    { label: 'Nouveaut\u00e9s', view: 'catalog' as View, filter: { sortBy: 'newest' } },
-    { label: 'Fid\u00e9lit\u00e9', view: 'profile' as View },
+    { label: 'Boutique', view: 'catalog' as View, icon: ShoppingBag },
+    { label: 'Nouveautés', view: 'catalog' as View, filter: { sortBy: 'newest' as const }, icon: Sparkles },
+    { label: 'Fidélité', view: 'profile' as View, icon: Trophy },
   ];
 
   return (
@@ -400,12 +400,14 @@ function DarnaNavbar() {
                 <button
                   key={link.label}
                   onClick={() => {
+                    if (link.view === 'catalog' && !link.filter) resetFilters();
                     if (link.filter) setFilters(link.filter);
                     setView(link.view);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                     view === link.view
-                      ? 'text-terracotta bg-terracotta/8'
+                      ? 'text-terracotta bg-terracotta/8 font-semibold'
                       : 'text-charcoal/70 hover:text-terracotta hover:bg-terracotta/5'
                   }`}
                 >
@@ -550,7 +552,8 @@ function DarnaNavbar() {
                 <button
                   key={link.label}
                   onClick={() => {
-                    if (link.filter) setFilters(link.filter);
+                    if (link.view === 'catalog' && !link.filter) resetFilters();
+                    if (link.filter) setFilters(link.filter as any);
                     setView(link.view);
                     setIsMobileOpen(false);
                   }}
@@ -591,7 +594,7 @@ function DarnaNavbar() {
                     className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-terracotta/60 hover:bg-sand transition-colors"
                   >
                     <X className="w-4 h-4" />
-                    D\u00e9connexion
+                    Déconnexion
                   </button>
                 </>
               ) : (
@@ -624,7 +627,7 @@ function DarnaNavbar() {
 // FOOTER
 // =============================================
 function DarnaFooter() {
-  const { setView } = useAppStore();
+  const { setView, resetFilters } = useAppStore();
   return (
     <footer className="bg-charcoal text-cream/70 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -641,7 +644,7 @@ function DarnaFooter() {
               </div>
             </div>
             <p className="text-sm leading-relaxed mb-4">
-              L&apos;artisanat alg\u00e9rien, fait avec le c\u0153ur. Chaque pi\u00e8ce raconte une histoire de savoir-faire et de passion.
+              L&apos;artisanat algérien, fait avec le c\u0153ur. Chaque pièce raconte une histoire de savoir-faire et de passion.
             </p>
             <div className="flex gap-3">
               <button className="w-9 h-9 rounded-xl bg-cream/10 hover:bg-terracotta flex items-center justify-center transition-colors">
@@ -661,12 +664,12 @@ function DarnaFooter() {
             <h4 className="text-cream font-semibold mb-4 text-sm">La Boutique</h4>
             <div className="space-y-2.5 text-sm">
               {[
-                { label: 'Tous les produits', action: () => setView('catalog') },
-                { label: 'Cuir & Artisanat', action: () => { useAppStore.getState().setFilters({ category: 'cuir-artisanat' }); setView('catalog'); } },
-                { label: 'Luminaires', action: () => { useAppStore.getState().setFilters({ category: 'luminaires' }); setView('catalog'); } },
-                { label: 'Textiles', action: () => { useAppStore.getState().setFilters({ category: 'textiles' }); setView('catalog'); } },
+                { label: 'Tous les produits', action: () => { resetFilters(); setView('catalog'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+                { label: 'Cuir & Artisanat', action: () => { useAppStore.getState().setFilters({ category: 'cuir-artisanat' }); setView('catalog'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+                { label: 'Luminaires', action: () => { useAppStore.getState().setFilters({ category: 'luminaires' }); setView('catalog'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+                { label: 'Textiles', action: () => { useAppStore.getState().setFilters({ category: 'textiles' }); setView('catalog'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
               ].map((item) => (
-                <button key={item.label} onClick={item.action} className="block hover:text-gold transition-colors">
+                <button key={item.label} onClick={item.action} className="block hover:text-gold transition-colors text-left w-full">
                   {item.label}
                 </button>
               ))}
@@ -679,7 +682,7 @@ function DarnaFooter() {
             <div className="space-y-2.5 text-sm">
               <p className="hover:text-gold transition-colors cursor-pointer">\u00c0 propos de Darna</p>
               <p className="hover:text-gold transition-colors cursor-pointer">Nos Artisans</p>
-              <p className="hover:text-gold transition-colors cursor-pointer">Engagement \u00e9thique</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Engagement éthique</p>
               <p className="hover:text-gold transition-colors cursor-pointer">Blog</p>
             </div>
           </div>
@@ -695,7 +698,7 @@ function DarnaFooter() {
             <div className="mt-4 space-y-2 text-sm">
               <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-gold" /> +213 555 123 456</p>
               <p className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-gold" /> bonjour@darna.dz</p>
-              <p className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-gold" /> Alger, Alg\u00e9rie</p>
+              <p className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-gold" /> Alger, Algérie</p>
             </div>
           </div>
         </div>
@@ -704,7 +707,7 @@ function DarnaFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-cream/40">
           <p>&copy; 2025 Darna for commerce. Fait avec amour par Selma Haci. Licence : Selma Haci.</p>
           <div className="flex gap-6">
-            <p className="hover:text-cream/70 cursor-pointer transition-colors">Confidentialit\u00e9</p>
+            <p className="hover:text-cream/70 cursor-pointer transition-colors">Confidentialité</p>
             <p className="hover:text-cream/70 cursor-pointer transition-colors">CGV</p>
             <p className="hover:text-cream/70 cursor-pointer transition-colors">Cookies</p>
           </div>
@@ -737,7 +740,7 @@ function HomeView() {
     });
   }, []);
 
-  const categoryIcons: Record<string, React.ElementType> = {
+  const categoryIcons: Record<string, any> = {
     'cuir-artisanat': HandMetal,
     'luminaires': Sparkles,
     'textiles': Layers,
@@ -797,16 +800,16 @@ function HomeView() {
             </h1>
 
             <motion.p className="text-lg md:text-xl text-cream/80 mb-6 max-w-lg leading-relaxed" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2, duration: 0.7 }}>
-              D\u00e9couvrez l&apos;\u00e2me de l&apos;artisanat alg\u00e9rien \u2014 des pi\u00e8ces uniques fa\u00e7onn\u00e9es \u00e0 la main par nos artisans, avec tout l&apos;amour et le savoir-faire transmis de g\u00e9n\u00e9ration en g\u00e9n\u00e9ration.
+              D&eacute;couvrez l&apos;&acirc;me de l&apos;artisanat alg&eacute;rien &mdash; des pi&egrave;ces uniques fa&ccedil;onn&eacute;es &agrave; la main par nos artisans, avec tout l&apos;amour et le savoir-faire transmis de g&eacute;n&eacute;ration en g&eacute;n&eacute;ration.
             </motion.p>
 
             <motion.p className="text-sm text-gold/50 italic mb-10 font-light" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}>
-              &laquo; L&apos;artisanat alg\u00e9rien, fait avec le c\u0153ur &raquo;
+              &laquo; L&apos;artisanat alg&eacute;rien, fait avec le c&oelig;ur &raquo;
             </motion.p>
 
             <motion.div className="flex flex-wrap gap-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6, duration: 0.6 }}>
               <Button size="lg" className="bg-gradient-to-r from-terracotta to-terracotta-dark hover:from-terracotta-dark hover:to-terracotta text-cream shadow-lg shadow-terracotta/25 px-8 h-13 text-base rounded-xl transition-all duration-300" onClick={() => setView('catalog')}>
-                D\u00e9couvrir la Boutique
+                Découvrir la Boutique
                 <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
                   <ChevronRight className="w-4 h-4 ml-1.5" />
                 </motion.span>
@@ -821,7 +824,7 @@ function HomeView() {
           <motion.div initial={{ opacity: 0, x: 80 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2, duration: 1, ease: [0.25, 0.46, 0.45, 0.94] }} className="absolute bottom-32 right-8 lg:right-16 hidden lg:flex flex-col gap-4">
             {[
               { value: 200, suffix: '+', label: 'Produits artisanaux' },
-              { value: 58, suffix: '', label: 'Wilayas livr\u00e9es' },
+              { value: 58, suffix: '', label: 'Wilayas livrées' },
               { value: 4.9, suffix: '/5', label: 'Note moyenne' },
             ].map((stat, i) => (
               <motion.div key={stat.label} className="text-right" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.2 + i * 0.15, duration: 0.5 }} whileHover={{ scale: 1.05, x: -5 }}>
@@ -850,7 +853,7 @@ function HomeView() {
 
           {/* Scroll indicator */}
           <motion.div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.5, duration: 0.5 }}>
-            <span className="text-[10px] text-cream/30 uppercase tracking-widest">D\u00e9couvrir</span>
+            <span className="text-[10px] text-cream/30 uppercase tracking-widest">Découvrir</span>
             <div className="w-5 h-8 border border-cream/20 rounded-full flex justify-center pt-1.5">
               <motion.div className="w-1 h-2 bg-cream/40 rounded-full" animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }} />
             </div>
@@ -871,17 +874,17 @@ function HomeView() {
             <h2 className="text-3xl md:text-4xl font-bold text-charcoal mt-2">
               Pourquoi <span className="text-terracotta">Darna</span> ?
             </h2>
-            <p className="text-charcoal/60 mt-3 max-w-lg mx-auto">
-              Parce que chaque pi\u00e8ce m\u00e9rite d&apos;\u00eatre unique, chaque artisan m\u00e9rite d&apos;\u00eatre reconnu.
+            <p className="text-charcoal/60 mt-3 max-w-2xl mx-auto leading-relaxed">
+              Darna for commerce s&apos;engage à préserver et à valoriser le patrimoine artisanal algérien par une approche éthique, durable et d&apos;une qualité irréprochable.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: HandMetal, title: 'Fait Main', desc: 'Chaque pi\u00e8ce est unique, fa\u00e7onn\u00e9e avec patience par nos artisans', color: 'terracotta' },
-              { icon: Heart, title: 'Artisans Alg\u00e9riens', desc: 'Nous connaissons chaque maker et son histoire personnelle', color: 'gold' },
-              { icon: Award, title: 'Qualit\u00e9 Premium', desc: 'Aucun compromis sur la mati\u00e8re et la finition de nos produits', color: 'olive' },
-              { icon: Truck, title: 'Livraison 58 Wilayas', desc: 'Nous livrons partout en Alg\u00e9rie, avec soin et rapidit\u00e9', color: 'terracotta-dark' },
+              { icon: HandMetal, title: 'Fait Main', desc: 'Chaque pièce est unique, fa\u00e7onnée avec patience par nos artisans', color: 'terracotta' },
+              { icon: Heart, title: 'Artisans Algériens', desc: 'Nous connaissons chaque maker et son histoire personnelle', color: 'gold' },
+              { icon: Award, title: 'Qualité Premium', desc: 'Aucun compromis sur la matière et la finition de nos produits', color: 'olive' },
+              { icon: Truck, title: 'Livraison 58 Wilayas', desc: 'Nous livrons partout en Algérie, avec soin et rapidité', color: 'terracotta-dark' },
             ].map((item, i) => (
               <motion.div
                 key={item.title}
@@ -915,8 +918,8 @@ function HomeView() {
             className="flex items-center justify-between mb-10"
           >
             <div>
-              <span className="text-terracotta text-sm font-medium tracking-wider uppercase">Explorer</span>
-              <h2 className="text-3xl font-bold text-charcoal mt-1">Nos Cat\u00e9gories</h2>
+              <span className="text-terracotta text-[10px] font-bold tracking-[0.3em] uppercase mb-1 block">Explorer</span>
+              <h2 className="text-2xl md:text-3xl font-serif font-bold text-charcoal">Nos Catégories</h2>
             </div>
           </motion.div>
 
@@ -965,8 +968,8 @@ function HomeView() {
             className="flex items-center justify-between mb-10"
           >
             <div>
-              <span className="text-terracotta text-sm font-medium tracking-wider uppercase">S\u00e9lection</span>
-              <h2 className="text-3xl font-bold text-charcoal mt-1">Produits Vedettes</h2>
+              <span className="text-terracotta text-[10px] font-bold tracking-[0.3em] uppercase mb-1 block">Sélection</span>
+              <h2 className="text-2xl md:text-3xl font-serif font-bold text-charcoal">Produits Vedettes</h2>
             </div>
             <Button variant="ghost" className="text-terracotta hover:text-terracotta-dark hover:bg-terracotta/5 rounded-xl" onClick={() => setView('catalog')}>
               Voir tout <ChevronRight className="w-4 h-4 ml-1" />
@@ -984,7 +987,7 @@ function HomeView() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {featuredProducts.map((product, i) => (
                 <ProductCard key={product.id} product={product} index={i} />
               ))}
@@ -1013,7 +1016,7 @@ function HomeView() {
             </div>
 
             <blockquote className="text-xl md:text-2xl lg:text-3xl text-charcoal/80 font-serif leading-relaxed italic mb-8">
-              &laquo; L&apos;artisanat n&apos;est pas qu&apos;un m\u00e9tier \u2014 c&apos;est un h\u00e9ritage vivant qui relie nos mains \u00e0 celles de nos anc\u00eatres. Chez Darna, chaque tresse, chaque point de couture, chaque coup de ciseau porte en lui la m\u00e9moire de notre terre. &raquo;
+              &laquo; L&apos;artisanat n&apos;est pas qu&apos;un métier \u2014 c&apos;est un héritage vivant qui relie nos mains à celles de nos ancêtres. Chez Darna, chaque tresse, chaque point de couture, chaque coup de ciseau porte en lui la mémoire de notre terre. &raquo;
             </blockquote>
 
             <div className="flex items-center justify-center gap-3">
@@ -1041,30 +1044,32 @@ function HomeView() {
               </div>
               <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 relative">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Crown className="w-6 h-6 text-gold" />
-                    <Badge className="bg-cream/20 text-cream border-none rounded-full">Programme Fid\u00e9lit\u00e9</Badge>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center">
+                      <Crown className="w-4 h-4 text-gold" />
+                    </div>
+                    <Badge className="bg-cream/20 text-cream border-none rounded-full px-3 py-0.5 text-[10px] font-bold tracking-wider uppercase">Programme Fidélité</Badge>
                   </div>
                   <h2 className="text-2xl md:text-3xl font-bold text-cream mb-3">
-                    Gagnez des points, recevez des r\u00e9compenses
+                    Gagnez des points, recevez des récompenses
                   </h2>
                   <p className="text-cream/80 mb-6 max-w-md leading-relaxed">
-                    Chaque achat vous rapporte des points. D\u00e9bloquez des badges, obtenez des r\u00e9ductions exclusives et gravitez dans le classement de notre communaut\u00e9.
+                    Notre programme de fidélité célèbre votre engagement envers l&apos;artisanat local. Cumulez des points à chaque commande et débloquez des privilèges réservés aux membres de notre communauté.
                   </p>
                   <Button
                     size="lg"
                     className="bg-cream text-terracotta hover:bg-cream/90 shadow-lg rounded-xl font-semibold transition-all duration-300"
                     onClick={() => setView('profile')}
                   >
-                    D\u00e9couvrir les r\u00e9compenses
+                    Découvrir les récompenses
                     <Award className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
                 <div className="flex gap-4 flex-wrap justify-center">
                   {[
-                    { icon: Sparkles, label: '2 500+ Points', desc: 'Gagn\u00e9s par commande' },
-                    { icon: Flame, label: '6 Badges', desc: '\u00c0 d\u00e9bloquer' },
-                    { icon: Trophy, label: 'Classement', desc: 'Montez en grade' },
+                    { icon: Sparkles, label: 'Avantages', desc: 'Dès votre inscription' },
+                    { icon: Flame, label: 'Distinctions', desc: 'Badges de savoir-faire' },
+                    { icon: Trophy, label: 'Privilèges', desc: 'Accès VIP & Offres' },
                   ].map((item) => (
                     <div key={item.label} className="text-center p-5 bg-cream/10 rounded-2xl backdrop-blur-sm min-w-[120px]">
                       <item.icon className="w-8 h-8 text-gold mx-auto mb-2" />
@@ -1152,9 +1157,9 @@ function CatalogView() {
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-charcoal">La Boutique</h1>
-            <p className="text-charcoal/50 mt-1">{total} produits trouv\u00e9s</p>
+          <div className="mb-2">
+            <h1 className="text-3xl font-serif font-bold text-charcoal">La Boutique</h1>
+            <p className="text-charcoal/50 mt-1 font-medium">{total} produits trouvés</p>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
@@ -1185,25 +1190,40 @@ function CatalogView() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Plus r\u00e9cents</SelectItem>
+                <SelectItem value="newest">Plus récents</SelectItem>
                 <SelectItem value="price-asc">Prix croissant</SelectItem>
-                <SelectItem value="price-desc">Prix d\u00e9croissant</SelectItem>
+                <SelectItem value="price-desc">Prix décroissant</SelectItem>
                 <SelectItem value="popular">Plus populaires</SelectItem>
-                <SelectItem value="rating">Mieux not\u00e9s</SelectItem>
+                <SelectItem value="rating">Mieux notés</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <div className="flex gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden">
+            <Button 
+              variant="outline" 
+              className="w-full border-terracotta/10 bg-white rounded-xl py-6"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal className="w-4 h-4 mr-2 text-terracotta" />
+              {showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
+              {activeFilterCount > 0 && (
+                <Badge className="ml-2 bg-terracotta text-white rounded-full">{activeFilterCount}</Badge>
+              )}
+            </Button>
+          </div>
+
           {/* Sidebar Filters */}
           <AnimatePresence>
             {showFilters && (
               <motion.aside
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 260 }}
-                exit={{ opacity: 0, width: 0 }}
-                className="lg:block flex-shrink-0 overflow-hidden"
+                initial={{ opacity: 0, y: -20, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -20, height: 0 }}
+                className="lg:w-64 flex-shrink-0 overflow-hidden lg:sticky lg:top-24 z-20"
               >
                 <Card className="border-0 shadow-sm sticky top-24 bg-white rounded-2xl">
                   <CardContent className="p-6 space-y-6">
@@ -1215,7 +1235,7 @@ function CatalogView() {
                     </div>
 
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium text-charcoal">Cat\u00e9gorie</Label>
+                      <Label className="text-sm font-medium text-charcoal">Catégorie</Label>
                       <div className="space-y-1.5">
                         <button
                           className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-all ${
@@ -1223,7 +1243,7 @@ function CatalogView() {
                           }`}
                           onClick={() => setFilters({ category: 'all' })}
                         >
-                          Toutes les cat\u00e9gories
+                          Toutes les catégories
                         </button>
                         {categories.map((cat) => (
                           <button
@@ -1278,7 +1298,7 @@ function CatalogView() {
                 <div className="w-20 h-20 rounded-full bg-sand flex items-center justify-center mb-4">
                   <Search className="w-10 h-10 text-charcoal/20" />
                 </div>
-                <h3 className="text-lg font-semibold text-charcoal mb-1">Aucun produit trouv\u00e9</h3>
+                <h3 className="text-lg font-semibold text-charcoal mb-1">Aucun produit trouvé</h3>
                 <p className="text-charcoal/50 mb-4">Essayez d&apos;ajuster vos filtres ou votre recherche</p>
                 <Button variant="outline" className="border-terracotta/20 text-terracotta hover:bg-terracotta/5 rounded-xl" onClick={resetFilters}>
                   Effacer les filtres
@@ -1415,7 +1435,7 @@ function ProductDetailView() {
       engraving,
     });
     openCart();
-    toast.success('Ajout\u00e9 au panier !', {
+    toast.success('Ajouté au panier !', {
       description: `${quantity}x ${product.name}`,
     });
   };
@@ -1565,7 +1585,7 @@ function ProductDetailView() {
             {/* Material Selection */}
             {materials.length > 0 && (
               <div className="space-y-3">
-                <Label className="text-sm font-medium text-charcoal">Mat\u00e9riau</Label>
+                <Label className="text-sm font-medium text-charcoal">Matériau</Label>
                 <div className="flex flex-wrap gap-2">
                   {materials.map((mat) => (
                     <button
@@ -1586,7 +1606,7 @@ function ProductDetailView() {
 
             {/* Custom Engraving */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-charcoal">Gravure personnalis\u00e9e (optionnel)</Label>
+              <Label className="text-sm font-medium text-charcoal">Gravure personnalisée (optionnel)</Label>
               <Input
                 placeholder="Entrez votre texte..."
                 value={engraving}
@@ -1595,13 +1615,13 @@ function ProductDetailView() {
                 className="bg-white border-terracotta/10 focus:border-terracotta/30 rounded-xl"
               />
               {engraving && (
-                <p className="text-xs text-charcoal/40">{engraving.length}/30 caract\u00e8res</p>
+                <p className="text-xs text-charcoal/40">{engraving.length}/30 caractères</p>
               )}
             </div>
 
             {/* Quantity */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-charcoal">Quantit\u00e9</Label>
+              <Label className="text-sm font-medium text-charcoal">Quantité</Label>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="icon" className="w-10 h-10 rounded-xl border-terracotta/15 hover:bg-terracotta/5" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
                 <span className="w-12 text-center font-semibold text-lg text-charcoal">{quantity}</span>
@@ -1624,7 +1644,7 @@ function ProductDetailView() {
                 size="lg"
                 variant="outline"
                 className="h-14 w-14 rounded-xl border-terracotta/15 hover:bg-terracotta/5 hover:text-terracotta"
-                onClick={() => { setIsWishlisted(!isWishlisted); toast.info(isWishlisted ? 'Retir\u00e9 des favoris' : 'Ajout\u00e9 aux favoris !'); }}
+                onClick={() => { setIsWishlisted(!isWishlisted); toast.info(isWishlisted ? 'Retiré des favoris' : 'Ajouté aux favoris !'); }}
               >
                 <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-terracotta text-terracotta' : ''}`} />
               </Button>
@@ -1634,7 +1654,7 @@ function ProductDetailView() {
                 className="h-14 w-14 rounded-xl border-terracotta/15 hover:bg-terracotta/5 hover:text-terracotta"
                 onClick={() => {
                   navigator.clipboard?.writeText(window.location.href);
-                  toast.info('Lien copi\u00e9 !');
+                  toast.info('Lien copié !');
                 }}
               >
                 <Share2 className="w-5 h-5" />
@@ -1644,9 +1664,9 @@ function ProductDetailView() {
             {/* Trust badges */}
             <div className="grid grid-cols-3 gap-3 pt-2">
               {[
-                { icon: Truck, label: 'Livraison 58 Wilayas', desc: 'Partout en Alg\u00e9rie' },
-                { icon: RotateCcw, label: 'Retour 14 jours', desc: '\u00c9change facile' },
-                { icon: Shield, label: 'Paiement s\u00e9curis\u00e9', desc: 'Protection totale' },
+                { icon: Truck, label: 'Livraison 58 Wilayas', desc: 'Partout en Algérie' },
+                { icon: RotateCcw, label: 'Retour 14 jours', desc: 'Échange facile' },
+                { icon: Shield, label: 'Paiement sécurisé', desc: 'Protection totale' },
               ].map((f) => (
                 <div key={f.label} className="flex flex-col items-center text-center p-3 rounded-xl bg-sand/70">
                   <f.icon className="w-5 h-5 text-terracotta mb-1.5" />
@@ -1659,7 +1679,7 @@ function ProductDetailView() {
             {/* Specs */}
             <Separator className="bg-terracotta/10" />
             <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-charcoal">Caract\u00e9ristiques</h3>
+              <h3 className="font-semibold text-sm text-charcoal">Caractéristiques</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {product.dimensions && (
                   <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
@@ -1676,7 +1696,7 @@ function ProductDetailView() {
                 <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
                   <span className="text-charcoal/50">En stock</span>
                   <span className={`font-medium ${product.stock > 10 ? 'text-olive' : product.stock > 0 ? 'text-gold' : 'text-terracotta'}`}>
-                    {product.stock > 0 ? `${product.stock} unit\u00e9s` : 'Rupture'}
+                    {product.stock > 0 ? `${product.stock} unités` : 'Rupture'}
                   </span>
                 </div>
                 <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
@@ -1716,7 +1736,8 @@ function ProductDetailView() {
 // =============================================
 function CheckoutView() {
   const { items, getTotal, clearCart } = useCartStore();
-  const { setView, currency, user } = useAppStore();
+  const { setView, currency, auth } = useAppStore();
+  const user = auth.user;
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     fullName: '', phone: '', email: '', address: '', wilaya: '', commune: '',
@@ -1734,14 +1755,14 @@ function CheckoutView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id || 'demo',
+          userId: user?.id || 'demo',
           total,
           subtotal,
           tax: 0,
           shipping,
           address: `${form.address}, ${form.commune}`,
           city: form.wilaya,
-          country: 'Alg\u00e9rie',
+          country: 'Algérie',
           zipCode: form.wilaya.split(' ')[0],
           paymentMethod: form.paymentMethod,
           note: form.note,
@@ -1757,7 +1778,7 @@ function CheckoutView() {
       });
       if (res.ok) {
         clearCart();
-        toast.success('Commande confirm\u00e9e !', { description: `+${pointsEarned} points fid\u00e9lit\u00e9` });
+        toast.success('Commande confirmée !', { description: `+${pointsEarned} points fidélité` });
         setView('orders');
       }
     } catch {
@@ -1768,7 +1789,7 @@ function CheckoutView() {
   const steps = [
     { num: 1, label: 'Livraison', icon: MapPin },
     { num: 2, label: 'Paiement', icon: CreditCard },
-    { num: 3, label: 'V\u00e9rification', icon: CheckCircle2 },
+    { num: 3, label: 'Vérification', icon: CheckCircle2 },
   ];
 
   return (
@@ -1815,7 +1836,7 @@ function CheckoutView() {
                           <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Mohamed Benali" className="bg-sand/50 border-terracotta/10 rounded-xl" />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-sm text-charcoal/70">T\u00e9l\u00e9phone *</Label>
+                          <Label className="text-sm text-charcoal/70">Téléphone *</Label>
                           <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0555 123 456" className="bg-sand/50 border-terracotta/10 rounded-xl" />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
@@ -1824,13 +1845,13 @@ function CheckoutView() {
                         </div>
                         <div className="space-y-2 sm:col-span-2">
                           <Label className="text-sm text-charcoal/70">Adresse *</Label>
-                          <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Rue, num\u00e9ro, quartier..." className="bg-sand/50 border-terracotta/10 rounded-xl" />
+                          <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Rue, numéro, quartier..." className="bg-sand/50 border-terracotta/10 rounded-xl" />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-sm text-charcoal/70">Wilaya *</Label>
                           <Select value={form.wilaya} onValueChange={(v) => setForm({ ...form, wilaya: v })}>
                             <SelectTrigger className="bg-sand/50 border-terracotta/10 rounded-xl">
-                              <SelectValue placeholder="S\u00e9lectionner..." />
+                              <SelectValue placeholder="Sélectionner..." />
                             </SelectTrigger>
                             <SelectContent className="max-h-64 overflow-y-auto">
                               {WILAYAS.map((w) => (
@@ -1872,8 +1893,8 @@ function CheckoutView() {
                       </h2>
                       <div className="space-y-3">
                         {[
-                          { value: 'cod', label: 'Paiement \u00e0 la livraison', desc: 'Payez en cash \u00e0 la r\u00e9ception', icon: Banknote },
-                          { value: 'credit_card', label: 'Carte bancaire (EDAHABIA / CIB)', desc: 'Paiement s\u00e9curis\u00e9 en ligne', icon: CreditCard },
+                          { value: 'cod', label: 'Paiement à la livraison', desc: 'Payez en cash à la réception', icon: Banknote },
+                          { value: 'credit_card', label: 'Carte bancaire (EDAHABIA / CIB)', desc: 'Paiement sécurisé en ligne', icon: CreditCard },
                           { value: 'transfer', label: 'Virement bancaire', desc: ' CCP ou virement', icon: Wallet },
                         ].map((p) => (
                           <button
@@ -1905,7 +1926,7 @@ function CheckoutView() {
                           <ChevronLeft className="w-4 h-4 mr-1" /> Retour
                         </Button>
                         <Button className="flex-1 h-12 bg-terracotta hover:bg-terracotta-dark text-cream font-semibold rounded-xl" onClick={() => setStep(3)}>
-                          V\u00e9rifier la commande
+                          Vérifier la commande
                           <ChevronRight className="w-4 h-4 ml-2" />
                         </Button>
                       </div>
@@ -1920,7 +1941,7 @@ function CheckoutView() {
                     <CardContent className="p-6 space-y-5">
                       <h2 className="text-lg font-semibold text-charcoal flex items-center gap-2">
                         <CheckCircle2 className="w-5 h-5 text-olive" />
-                        V\u00e9rification
+                        Vérification
                       </h2>
                       <div className="space-y-4">
                         <div className="p-4 bg-sand/70 rounded-xl space-y-1">
@@ -1932,7 +1953,7 @@ function CheckoutView() {
                         <div className="p-4 bg-sand/70 rounded-xl space-y-1">
                           <p className="text-xs text-charcoal/40 uppercase tracking-wider">Paiement</p>
                           <p className="text-sm font-medium text-charcoal">
-                            {form.paymentMethod === 'cod' ? 'Paiement \u00e0 la livraison' : form.paymentMethod === 'credit_card' ? 'Carte bancaire' : 'Virement bancaire'}
+                            {form.paymentMethod === 'cod' ? 'Paiement à la livraison' : form.paymentMethod === 'credit_card' ? 'Carte bancaire' : 'Virement bancaire'}
                           </p>
                         </div>
                         <div className="p-4 bg-sand/70 rounded-xl space-y-1">
@@ -1968,7 +1989,7 @@ function CheckoutView() {
           <div className="lg:col-span-1">
             <Card className="border-0 shadow-sm bg-white rounded-2xl sticky top-24">
               <CardContent className="p-6 space-y-4">
-                <h3 className="font-semibold text-charcoal">R\u00e9sum\u00e9</h3>
+                <h3 className="font-semibold text-charcoal">Résumé</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-charcoal/60">
                     <span>Sous-total</span>
@@ -1981,7 +2002,7 @@ function CheckoutView() {
                     </span>
                   </div>
                   {shipping > 0 && (
-                    <p className="text-xs text-charcoal/40">Livraison gratuite d\u00e8s {formatPrice(5000, currency)}</p>
+                    <p className="text-xs text-charcoal/40">Livraison gratuite dès {formatPrice(5000, currency)}</p>
                   )}
                   <Separator className="bg-terracotta/10" />
                   <div className="flex justify-between text-lg font-bold text-charcoal">
@@ -1994,7 +2015,7 @@ function CheckoutView() {
                 <div className="flex items-center gap-2 p-3 bg-gold/10 rounded-xl mt-2">
                   <Sparkles className="w-4 h-4 text-gold flex-shrink-0" />
                   <span className="text-sm font-medium text-charcoal/70">
-                    +{pointsEarned} points fid\u00e9lit\u00e9 avec cette commande !
+                    +{pointsEarned} points fidélité avec cette commande !
                   </span>
                 </div>
 
@@ -2026,11 +2047,11 @@ function ProfileView() {
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '';
 
   const badges = [
-    { name: 'Premier Achat', icon: Gift, desc: 'Premi\u00e8re commande', earned: true, color: 'terracotta' },
-    { name: 'Client Fid\u00e8le', icon: Heart, desc: '5 commandes pass\u00e9es', earned: true, color: 'gold' },
-    { name: 'Artisan Lover', icon: HandMetal, desc: '10 articles achet\u00e9s', earned: true, color: 'olive' },
+    { name: 'Premier Achat', icon: Gift, desc: 'Première commande', earned: true, color: 'terracotta' },
+    { name: 'Client Fidèle', icon: Heart, desc: '5 commandes passées', earned: true, color: 'gold' },
+    { name: 'Artisan Lover', icon: HandMetal, desc: '10 articles achetés', earned: true, color: 'olive' },
     { name: 'Ambassadeur', icon: Crown, desc: 'Parrainer 3 amis', earned: false, color: 'terracotta' },
-    { name: 'Collectionneur', icon: Gem, desc: 'Un article de chaque cat\u00e9gorie', earned: false, color: 'gold' },
+    { name: 'Collectionneur', icon: Gem, desc: 'Un article de chaque catégorie', earned: false, color: 'gold' },
     { name: 'Darna Elite', icon: Trophy, desc: 'Atteindre le niveau 5', earned: false, color: 'terracotta-dark' },
   ];
 
@@ -2054,9 +2075,9 @@ function ProfileView() {
               <User className="w-8 h-8 text-terracotta" />
             </div>
             <h2 className="text-xl font-bold text-charcoal mb-2">Connexion requise</h2>
-            <p className="text-charcoal/50 text-sm mb-4">Connectez-vous pour acc\u00e9der \u00e0 votre espace fid\u00e9lit\u00e9.</p>
+            <p className="text-charcoal/50 text-sm mb-4">Connectez-vous pour accéder à votre espace fidélité.</p>
             <Button className="bg-terracotta hover:bg-terracotta-dark text-white rounded-xl" onClick={() => setView('home')}>
-              Retour \u00e0 l&apos;accueil
+              Retour à l&apos;accueil
             </Button>
           </CardContent>
         </Card>
@@ -2067,7 +2088,7 @@ function ProfileView() {
   return (
     <div className="pt-20 min-h-screen bg-cream">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-charcoal mb-8">Mon Espace Fid\u00e9lit\u00e9</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-charcoal mb-8">Mon Espace Fidélité</h1>
 
         {/* User Info */}
         <motion.div
@@ -2113,7 +2134,7 @@ function ProfileView() {
           <Card className="border-0 shadow-sm bg-white rounded-2xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-charcoal">Progr\u00e8s vers le Niveau {(user.level || 1) + 1}</h3>
+                <h3 className="font-semibold text-charcoal">Progrès vers le Niveau {(user.level || 1) + 1}</h3>
                 <span className="text-sm text-charcoal/50">{(user.points || 0).toLocaleString('fr-DZ')} / {pointsToNextLevel.toLocaleString('fr-DZ')} pts</span>
               </div>
               <div className="h-3 bg-sand rounded-full overflow-hidden">
@@ -2155,7 +2176,7 @@ function ProfileView() {
                     <p className="text-xs font-semibold text-charcoal">{badge.name}</p>
                     <p className="text-[10px] text-charcoal/40 mt-0.5">{badge.desc}</p>
                     {badge.earned && (
-                      <Badge className="mt-2 bg-olive/10 text-olive border-olive/20 text-[9px] rounded-full px-2">D\u00e9bloqu\u00e9</Badge>
+                      <Badge className="mt-2 bg-olive/10 text-olive border-olive/20 text-[9px] rounded-full px-2">Débloqué</Badge>
                     )}
                   </CardContent>
                 </Card>
@@ -2175,7 +2196,7 @@ function ProfileView() {
             <CardContent className="p-6">
               <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-gold" />
-                Classement Fid\u00e9lit\u00e9
+                Classement Fidélité
               </h3>
               <div className="space-y-2">
                 {leaderboard.map((entry, i) => (
@@ -2252,10 +2273,10 @@ function OrdersView() {
 
   const statusLabels: Record<string, string> = {
     pending: 'En attente',
-    confirmed: 'Confirm\u00e9e',
-    shipped: 'Exp\u00e9di\u00e9e',
-    delivered: 'Livr\u00e9e',
-    cancelled: 'Annul\u00e9e',
+    confirmed: 'Confirmée',
+    shipped: 'Expédiée',
+    delivered: 'Livrée',
+    cancelled: 'Annulée',
   };
 
   return (
@@ -2281,9 +2302,9 @@ function OrdersView() {
               <Package className="w-10 h-10 text-charcoal/20" />
             </div>
             <h3 className="text-lg font-semibold text-charcoal mb-2">Aucune commande</h3>
-            <p className="text-charcoal/50 mb-6">Vous n&apos;avez pas encore pass\u00e9 de commande.</p>
+            <p className="text-charcoal/50 mb-6">Vous n&apos;avez pas encore passé de commande.</p>
             <Button className="bg-terracotta hover:bg-terracotta-dark text-cream rounded-xl" onClick={() => setView('catalog')}>
-              D\u00e9couvrir la boutique
+              Découvrir la boutique
             </Button>
           </div>
         ) : (

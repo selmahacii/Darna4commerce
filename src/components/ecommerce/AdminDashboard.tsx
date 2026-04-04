@@ -27,10 +27,10 @@ import { safeJSONParse } from '@/lib/format';
 // =============================================
 // API HELPER
 // =============================================
-const BACKEND_PORT = '3003';
+const BACKEND_URL = 'http://localhost:3003';
 const api = (path: string, options?: RequestInit) => {
   const token = useAppStore.getState().auth.token;
-  return fetch(`${path}${path.includes('?') ? '&' : '?'}XTransformPort=${BACKEND_PORT}`, {
+  return fetch(`${BACKEND_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -102,8 +102,8 @@ interface AnalyticsSummary {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock },
-  confirmed: { label: 'Confirm\u00e9', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: CheckCircle2 },
-  shipped: { label: 'Exp\u00e9di\u00e9', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Truck },
+  confirmed: { label: 'Confirmé', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: CheckCircle2 },
+  shipped: { label: 'Expédié', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Truck },
   delivered: { label: 'Livré', color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle2 },
   cancelled: { label: 'Annulé', color: 'bg-red-100 text-red-800 border-red-200', icon: XCircle },
 };
@@ -154,9 +154,9 @@ export default function AdminDashboard() {
             <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
-            <h2 className="text-xl font-bold text-charcoal mb-2">Acc\u00e8s Refus\u00e9</h2>
+            <h2 className="text-xl font-bold text-charcoal mb-2">Accès Refusé</h2>
             <p className="text-charcoal/60 text-sm">
-              Vous n'avez pas les permissions n\u00e9cessaires pour acc\u00e9der au tableau de bord administrateur.
+              Vous n'avez pas les permissions nécessaires pour accéder au tableau de bord administrateur.
             </p>
           </CardContent>
         </Card>
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
                 Tableau de Bord
               </h1>
               <p className="text-sm text-charcoal/50 mt-1 ml-[52px]">
-                Bienvenue, {auth.user.name} — Gestion compl\u00e8te de la boutique
+                Bienvenue, {auth.user.name} — Gestion complète de la boutique
               </p>
             </div>
             <Badge className="bg-terracotta/10 text-terracotta border-terracotta/20 w-fit px-3 py-1">
@@ -200,7 +200,7 @@ export default function AdminDashboard() {
               { value: 'products', label: 'Produits', icon: Package },
               { value: 'orders', label: 'Commandes', icon: ShoppingBag },
               { value: 'users', label: 'Clients', icon: Users },
-              { value: 'categories', label: 'Cat\u00e9gories', icon: Tag },
+              { value: 'categories', label: 'Catégories', icon: Tag },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -285,7 +285,7 @@ function OverviewTab({ analytics, loading }: { analytics: AnalyticsSummary | nul
         <Card className="border-0 shadow-sm lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Commandes R\u00e9centes</CardTitle>
+              <CardTitle className="text-base font-semibold">Commandes Récentes</CardTitle>
               <Badge variant="outline" className="text-xs">{orders.length} total</Badge>
             </div>
           </CardHeader>
@@ -326,7 +326,7 @@ function OverviewTab({ analytics, loading }: { analytics: AnalyticsSummary | nul
         {/* Quick Stats */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">R\u00e9partition</CardTitle>
+            <CardTitle className="text-base font-semibold">Répartition</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {analytics?.salesByCategory?.slice(0, 5).map((cat) => (
@@ -568,7 +568,7 @@ function ProductFormDialog({ product, categories, open, onClose, onSave }: {
               <Input name="stock" type="number" defaultValue={product?.stock || 0} required className="rounded-xl" />
             </div>
             <div className="space-y-2">
-              <Label>Cat\u00e9gorie *</Label>
+              <Label>Catégorie *</Label>
               <Select name="categoryId" defaultValue={product?.categoryId || ''} required>
                 <SelectTrigger className="rounded-xl"><SelectValue placeholder="Choisir..." /></SelectTrigger>
                 <SelectContent>
@@ -596,7 +596,7 @@ function ProductFormDialog({ product, categories, open, onClose, onSave }: {
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl">Annuler</Button>
             <Button type="submit" disabled={saving} className="flex-1 bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
-              {saving ? 'Sauvegarde...' : isEdit ? 'Mettre \u00e0 jour' : 'Cr\u00e9er le produit'}
+              {saving ? 'Sauvegarde...' : isEdit ? 'Mettre à jour' : 'Créer le produit'}
             </Button>
           </div>
         </form>
@@ -637,10 +637,10 @@ function OrdersTab() {
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
-        toast.success('Statut mis \u00e0 jour');
+        toast.success('Statut mis à jour');
         setOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
       } else {
-        toast.error('Erreur lors de la mise \u00e0 jour');
+        toast.error('Erreur lors de la mise à jour');
       }
     } catch {
       toast.error('Erreur serveur');
@@ -791,7 +791,7 @@ function UsersTab() {
               <thead>
                 <tr className="border-b border-terracotta/10 bg-sand/30">
                   <th className="text-left px-4 py-3 font-medium text-charcoal/60">Client</th>
-                  <th className="text-left px-4 py-3 font-medium text-charcoal/60">R\u00f4le</th>
+                  <th className="text-left px-4 py-3 font-medium text-charcoal/60">Rôle</th>
                   <th className="text-center px-4 py-3 font-medium text-charcoal/60">Points</th>
                   <th className="text-center px-4 py-3 font-medium text-charcoal/60">Commandes</th>
                   <th className="text-center px-4 py-3 font-medium text-charcoal/60">Statut</th>
@@ -878,11 +878,11 @@ function CategoriesTab() {
   }, [loadCategories]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette cat\u00e9gorie ?')) return;
+    if (!confirm('Supprimer cette catégorie ?')) return;
     try {
       const res = await api(`/api/categories/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        toast.success('Cat\u00e9gorie supprim\u00e9e');
+        toast.success('Catégorie supprimée');
         loadCategories();
       } else toast.error('Erreur lors de la suppression');
     } catch { toast.error('Erreur serveur'); }
@@ -891,10 +891,10 @@ function CategoriesTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-charcoal/50">{categories.length} cat\u00e9gorie(s)</p>
+        <p className="text-sm text-charcoal/50">{categories.length} catégorie(s)</p>
         <Button onClick={() => setShowCreate(true)} className="bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
           <Plus className="w-4 h-4 mr-1.5" />
-          Nouvelle cat\u00e9gorie
+          Nouvelle catégorie
         </Button>
       </div>
 
@@ -969,7 +969,7 @@ function CategoryFormDialog({ category, open, onClose, onSave }: {
         : await api('/api/categories', { method: 'POST', body: JSON.stringify(body) });
 
       if (res.ok) {
-        toast.success(category ? 'Cat\u00e9gorie mise \u00e0 jour' : 'Cat\u00e9gorie cr\u00e9\u00e9e');
+        toast.success(category ? 'Catégorie mise à jour' : 'Catégorie créée');
         onSave();
       } else {
         const err = await res.json();
@@ -983,7 +983,7 @@ function CategoryFormDialog({ category, open, onClose, onSave }: {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md bg-white">
         <DialogHeader>
-          <DialogTitle>{category ? 'Modifier la cat\u00e9gorie' : 'Nouvelle cat\u00e9gorie'}</DialogTitle>
+          <DialogTitle>{category ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -992,12 +992,12 @@ function CategoryFormDialog({ category, open, onClose, onSave }: {
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
-            <textarea name="description" defaultValue={category?.description || ''} rows={3} placeholder="Description de la cat\u00e9gorie" className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none" />
+            <textarea name="description" defaultValue={category?.description || ''} rows={3} placeholder="Description de la catégorie" className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none" />
           </div>
           <div className="flex gap-3">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl">Annuler</Button>
             <Button type="submit" disabled={saving} className="flex-1 bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
-              {saving ? 'Sauvegarde...' : category ? 'Mettre \u00e0 jour' : 'Cr\u00e9er'}
+              {saving ? 'Sauvegarde...' : category ? 'Mettre à jour' : 'Créer'}
             </Button>
           </div>
         </form>

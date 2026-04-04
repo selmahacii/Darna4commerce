@@ -53,9 +53,9 @@ interface AppState {
   setLanguage: (language: string) => void;
 }
 
-const BACKEND_PORT = '3003';
+const BACKEND_URL = 'http://localhost:3003';
 const authApi = (path: string, options?: RequestInit) =>
-  fetch(`${path}${path.includes('?') ? '&' : '?'}XTransformPort=${BACKEND_PORT}`, {
+  fetch(`${BACKEND_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

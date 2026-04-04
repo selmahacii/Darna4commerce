@@ -6,14 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore, type CartItem } from '@/stores/cart-store';
 import { useAppStore } from '@/stores/app-store';
-
-function formatDZD(price: number) {
-  return price.toLocaleString('fr-DZ');
-}
+import { formatPrice } from '@/lib/format';
 
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, getTotal } = useCartStore();
-  const { setView } = useAppStore();
+  const { currency, setView } = useAppStore();
 
   const subtotal = getTotal();
   const shipping = subtotal > 5000 ? 0 : 500;
@@ -96,18 +93,18 @@ export default function CartDrawer() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-muted-foreground">
                     <span>Sous-total</span>
-                    <span className="font-medium">{formatDZD(subtotal)} DA</span>
+                    <span className="font-medium">{formatPrice(subtotal, currency)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Livraison</span>
                     <span className={shipping === 0 ? 'text-[var(--color-olive)] font-semibold' : 'font-medium'}>
-                      {shipping === 0 ? 'Gratuite' : `${formatDZD(shipping)} DA`}
+                      {shipping === 0 ? 'Gratuite' : formatPrice(shipping, currency)}
                     </span>
                   </div>
                   <Separator className="bg-[var(--color-gold)]/20" />
                   <div className="flex justify-between text-lg font-bold text-foreground">
                     <span>Total</span>
-                    <span>{formatDZD(total)} DA</span>
+                    <span>{formatPrice(total, currency)}</span>
                   </div>
                 </div>
 
@@ -131,6 +128,8 @@ function CartItemCard({ item, onUpdateQty, onRemove }: {
   onUpdateQty: (q: number) => void;
   onRemove: () => void;
 }) {
+  const { currency } = useAppStore();
+
   return (
     <motion.div
       layout
@@ -149,25 +148,25 @@ function CartItemCard({ item, onUpdateQty, onRemove }: {
 
       <div className="flex-1 min-w-0">
         <h3 className="font-medium text-sm truncate text-foreground">{item.name}</h3>
-        <p className="text-sm font-semibold text-[var(--color-terracotta)] mt-1">{formatDZD(item.price)} DA</p>
+        <p className="text-sm font-semibold text-[var(--color-terracotta)] mt-1">{formatPrice(item.price, currency)}</p>
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => onUpdateQty(item.quantity - 1)}>
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-md" onClick={() => onUpdateQty(item.quantity - 1)}>
               <Minus className="w-3 h-3" />
             </Button>
             <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
-            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => onUpdateQty(item.quantity + 1)}>
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-md" onClick={() => onUpdateQty(item.quantity + 1)}>
               <Plus className="w-3 h-3" />
             </Button>
           </div>
-          <span className="font-semibold text-sm text-foreground">{formatDZD(item.price * item.quantity)} DA</span>
+          <span className="font-semibold text-sm text-foreground">{formatPrice(item.price * item.quantity, currency)}</span>
         </div>
       </div>
 
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 rounded-md"
+        className="h-9 w-9 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 rounded-md"
         onClick={onRemove}
       >
         <Trash2 className="w-4 h-4" />

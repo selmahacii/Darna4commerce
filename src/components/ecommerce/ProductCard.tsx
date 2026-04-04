@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cart-store';
 import { useAppStore } from '@/stores/app-store';
+import { useWishlistStore } from '@/stores/wishlist-store';
+import { formatPrice, safeJSONParse } from '@/lib/format';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -32,24 +35,23 @@ interface ProductCardProps {
   index?: number;
 }
 
-function formatDZD(price: number) {
-  return price.toLocaleString('fr-DZ');
-}
-
 export default function ProductCard({ product, index = 0 }: ProductCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
   const [tiltStyle, setTiltStyle] = useState({});
   const [glarePos, setGlarePos] = useState({ x: 50, y: 50, opacity: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCartStore();
-  const { selectProduct } = useAppStore();
+  const { selectProduct, currency } = useAppStore();
+  const { toggleItem, hasItem } = useWishlistStore();
 
-  const images = JSON.parse(product.images || '[]') as string[];
+  const isLiked = hasItem(product.id);
+  const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window;
+
+  const images = safeJSONParse<string[]>(product.images, []);
   const primaryImage = images[0];
   const discount = product.comparePrice
     ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
     : 0;
-  const colors = JSON.parse(product.colors || '[]') as string[];
+  const colors = safeJSONParse<string[]>(product.colors, []);
 
   const quickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,9 +62,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       image: primaryImage,
       quantity: 1,
       color: colors[0] || '',
-      material: JSON.parse(product.materials || '[]')[0] || '',
+      material: safeJSONParse<string[]>(product.materials, [])[0] || '',
       engraving: '',
     });
+    toast.success('Ajouté au panier !');
   };
 
   const handleMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
@@ -105,26 +108,28 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       <div
         ref={cardRef}
         style={{
-          ...tiltStyle,
+          ...(isTouchDevice ? {} : tiltStyle),
           transformStyle: 'preserve-3d',
-          willChange: 'transform',
+          willChange: isTouchDevice ? 'auto' : 'transform',
         }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
+        onMouseMove={isTouchDevice ? undefined : handleMouseMove}
+        onMouseLeave={isTouchDevice ? undefined : handleMouseLeave}
       >
         <Card
           className="group border border-[var(--border)] bg-card shadow-sm hover:shadow-2xl hover:shadow-[var(--color-terracotta)]/10 transition-shadow duration-500 cursor-pointer overflow-hidden rounded-2xl"
           onClick={() => selectProduct(product.id)}
         >
-          {/* Glare effect */}
-          <div
-            className="absolute inset-0 rounded-2xl pointer-events-none z-20"
-            style={{
-              background: `radial-gradient(circle at ${glarePos.x}% ${glarePos.y}%, rgba(255,255,255,0.12), transparent 60%)`,
-              opacity: glarePos.opacity,
-              transition: glarePos.opacity ? 'opacity 0.1s' : 'opacity 0.4s',
-            }}
-          />
+          {/* Glare effect (desktop only) */}
+          {!isTouchDevice && (
+            <div
+              className="absolute inset-0 rounded-2xl pointer-events-none z-20"
+              style={{
+                background: `radial-gradient(circle at ${glarePos.x}% ${glarePos.y}%, rgba(255,255,255,0.12), transparent 60%)`,
+                opacity: glarePos.opacity,
+                transition: glarePos.opacity ? 'opacity 0.1s' : 'opacity 0.4s',
+              }}
+            />
+          )}
 
           {/* Image */}
           <div className="relative aspect-[4/3] overflow-hidden bg-[var(--color-sand)]">
@@ -141,8 +146,8 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
               </div>
             )}
 
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500">
+            {/* Overlay — always visible on mobile, hover-reveal on desktop */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500">
               <div className="absolute bottom-4 left-4 right-4 flex gap-2" style={{ transform: 'translateZ(40px)' }}>
                 <Button
                   size="sm"
@@ -189,10 +194,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
               )}
             </div>
 
-            {/* Like */}
+            {/* Like — always visible on mobile, hover-reveal on desktop */}
             <motion.button
-              className="absolute top-3 right-3 w-9 h-9 rounded-xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 z-10"
-              onClick={(e) => { e.stopPropagation(); setIsLiked(!isLiked); }}
+              className="absolute top-3 right-3 w-9 h-9 rounded-xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 hover:scale-110 z-10"
+              onClick={(e) => { e.stopPropagation(); toggleItem(product.id); }}
               style={{ transform: 'translateZ(30px)' }}
               whileTap={{ scale: 0.85 }}
             >
@@ -258,10 +263,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
                 className="text-lg font-bold text-foreground"
                 whileHover={{ scale: 1.05 }}
               >
-                {formatDZD(product.price)} DA
+                {formatPrice(product.price, currency)}
               </motion.span>
               {product.comparePrice && (
-                <span className="text-sm text-muted-foreground line-through">{formatDZD(product.comparePrice)} DA</span>
+                <span className="text-sm text-muted-foreground line-through">{formatPrice(product.comparePrice!, currency)}</span>
               )}
             </div>
           </CardContent>

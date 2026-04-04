@@ -11,6 +11,7 @@ export interface CartItem {
   color: string;
   material: string;
   engraving: string;
+  maxStock?: number;
 }
 
 interface CartState {
@@ -43,26 +44,34 @@ export const useCartStore = create<CartState>()(
             i.engraving === item.engraving
         );
 
+        const maxStock = item.maxStock || 999;
+
         if (existing) {
+          const newQty = Math.min(existing.quantity + item.quantity, maxStock);
           set({
             items: get().items.map((i) =>
-              i.id === existing.id ? { ...i, quantity: i.quantity + item.quantity } : i
+              i.id === existing.id ? { ...i, quantity: newQty } : i
             ),
           });
         } else {
-          set({ items: [...get().items, { ...item, id: crypto.randomUUID() }] });
+          const qty = Math.min(item.quantity, maxStock);
+          set({ items: [...get().items, { ...item, id: crypto.randomUUID(), quantity: qty }] });
         }
       },
 
       removeItem: (id) => set({ items: get().items.filter((i) => i.id !== id) }),
 
       updateQuantity: (id, quantity) => {
+        const item = get().items.find(i => i.id === id);
+        const max = item?.maxStock || 999;
+        const clampedQty = Math.min(Math.max(quantity, 1), max);
+        
         if (quantity <= 0) {
           get().removeItem(id);
           return;
         }
         set({
-          items: get().items.map((i) => (i.id === id ? { ...i, quantity } : i)),
+          items: get().items.map((i) => (i.id === id ? { ...i, quantity: clampedQty } : i)),
         });
       },
 
@@ -77,6 +86,9 @@ export const useCartStore = create<CartState>()(
       getItemCount: () =>
         get().items.reduce((count, item) => count + item.quantity, 0),
     }),
-    { name: 'ecommerce-cart' }
+    {
+      name: 'ecommerce-cart',
+      partialize: (state) => ({ items: state.items }),
+    }
   )
 );

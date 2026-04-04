@@ -60,3 +60,26 @@ Stage Summary:
 - Proper error handling with 404 fallback showing available routes
 - Frontend updated to proxy all API calls through Caddy gateway via XTransformPort=3003
 - Backend stable and handles multiple sequential requests successfully
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Make platform responsive, dynamic, with proper role/action distribution
+
+Work Log:
+- Performed comprehensive audit of all files (page.tsx, stores, components) identifying 30+ issues
+- Created /src/lib/format.ts: shared formatPrice() (DZD/EUR/USD/GBP) and safeJSONParse() utilities
+- Created /src/stores/wishlist-store.ts: persisted wishlist with toggleItem, hasItem, addItem, removeItem
+- Rewrote /src/stores/app-store.ts: added UserState, login()/logout() with demo credentials, isAdmin() derived method, removed unprotected setAdmin
+- Rewrote /src/stores/cart-store.ts: added maxStock validation, excluded isOpen from persistence via partialize
+- Rewrote /src/components/ecommerce/Navbar.tsx: login dialog, reactive currency toggle, mobile responsive search
+- Rewrote /src/components/ecommerce/ProductCard.tsx: mobile-visible buttons (no hover), wishlist store, currency-aware prices, toast on quick-add, touch device detection (skip 3D tilt), safeJSONParse
+- Rewrote /src/components/ecommerce/CartDrawer.tsx: mobile-visible delete button, larger touch targets (h-9 w-9), currency-aware prices
+- Fixed page.tsx: replaced isAdmin boolean with isAdmin() method, added login dialog, admin view guard, fixed mobile filter sidebar (hidden lg:block → lg:block), responsive search bar width, dynamic Tailwind classes → colorMap lookup, unique SVG pattern IDs, share clipboard, error handling with toast notifications, safeJSONParse, checkout userId fix
+- All linting passes clean, dev server compiles successfully
+
+Stage Summary:
+- **Responsive**: Mobile filters now visible, product card/cart buttons accessible on touch devices, responsive search bar, larger touch targets
+- **Dynamic**: Toast feedback on all actions, loading states, error handling with retry guidance, clipboard share, persisted wishlist
+- **Roles**: Login system with demo credentials (admin@darna.dz/admin123, amina@email.com/amina123), admin dashboard protected by auth, derived isAdmin() method, no unprotected setAdmin
+- **Architecture**: Shared formatPrice utility used across all components, safe JSON parsing, persisted state (cart items, wishlist, user session — but not UI state like isOpen)

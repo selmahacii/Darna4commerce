@@ -28,7 +28,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAppStore, type View } from '@/stores/app-store';
+import { safeJSONParse } from '@/lib/format';
 
 // Backend API helper — routes all calls to Node.js backend on port 3003
 const BACKEND_PORT = '3003';
@@ -96,6 +98,19 @@ interface Category {
 }
 
 // =============================================
+// COLOR MAP (avoids dynamic Tailwind class issues)
+// =============================================
+const colorMap: Record<string, { bg: string; text: string }> = {
+  terracotta: { bg: 'bg-terracotta/10', text: 'text-terracotta' },
+  gold: { bg: 'bg-gold/10', text: 'text-gold' },
+  olive: { bg: 'bg-olive/10', text: 'text-olive' },
+  'terracotta-dark': { bg: 'bg-terracotta-dark/10', text: 'text-terracotta-dark' },
+  charcoal: { bg: 'bg-charcoal/10', text: 'text-charcoal' },
+};
+
+const getColor = (name: string) => colorMap[name] || colorMap.charcoal;
+
+// =============================================
 // PRICE FORMATTING
 // =============================================
 function formatPrice(amount: number, currency: string): string {
@@ -144,14 +159,14 @@ function DarnaLogo({ className = 'w-9 h-9' }: { className?: string }) {
 // =============================================
 // DECORATIVE ZELLIGE PATTERN
 // =============================================
-function ZelligePattern({ className = '' }: { className?: string }) {
+function ZelligePattern({ className = '', id = 'zellige' }: { className?: string; id?: string }) {
   return (
     <svg viewBox="0 0 200 200" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <pattern id="zellige" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <pattern id={id} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
         <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
         <path d="M20 8L32 20L20 32L8 20Z" fill="none" stroke="currentColor" strokeWidth="0.3" opacity="0.2" />
       </pattern>
-      <rect width="200" height="200" fill="url(#zellige)" />
+      <rect width="200" height="200" fill={`url(#${id})`} />
     </svg>
   );
 }
@@ -186,8 +201,9 @@ function DarnaNavbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [adminOpen, setAdminOpen] = useState(false);
-  const { view, setView, isAdmin, setAdmin, setCurrency, currency, filters, setFilters } = useAppStore();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const { view, setView, isAdmin: isAdminFn, setCurrency, currency, filters, setFilters, user, login, logout } = useAppStore();
+  const isAdmin = isAdminFn();
   const { toggleCart, getItemCount } = useCartStore();
   const itemCount = getItemCount();
 
@@ -273,42 +289,40 @@ function DarnaNavbar() {
                 </button>
               ))}
 
-              {/* Admin Dropdown */}
-              <div className="relative">
+              {/* Auth / Admin */}
+              {user.isAuthenticated && user.role === 'admin' ? (
                 <button
-                  onClick={() => setAdminOpen(!adminOpen)}
-                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1 transition-all"
+                  onClick={() => setView('admin')}
+                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
                 >
-                  <Settings className="w-4 h-4" />
-                  <ChevronDown className={`w-3 h-3 transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
+                  <BarChart3 className="w-4 h-4" />
+                  Tableau de bord
                 </button>
-                <AnimatePresence>
-                  {adminOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute top-full right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-terracotta/10 overflow-hidden"
-                    >
-                      <button
-                        onClick={() => { setAdmin(!isAdmin); setView('admin'); setAdminOpen(false); }}
-                        className="w-full px-4 py-3 text-left text-sm text-charcoal/70 hover:bg-sand flex items-center gap-3 transition-colors"
-                      >
-                        <BarChart3 className="w-4 h-4 text-terracotta" />
-                        Tableau de bord
-                      </button>
-                      <button
-                        onClick={() => { setView('orders'); setAdminOpen(false); }}
-                        className="w-full px-4 py-3 text-left text-sm text-charcoal/70 hover:bg-sand flex items-center gap-3 transition-colors border-t border-terracotta/5"
-                      >
-                        <Package className="w-4 h-4 text-olive" />
-                        Mes Commandes
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              ) : user.isAuthenticated ? (
+                <button
+                  onClick={() => { setView('orders'); }}
+                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                >
+                  <Package className="w-4 h-4" />
+                  Mes Commandes
+                </button>
+              ) : (
+                <button
+                  onClick={() => setLoginOpen(true)}
+                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                >
+                  <User className="w-4 h-4" />
+                  Connexion
+                </button>
+              )}
+              {user.isAuthenticated && (
+                <button
+                  onClick={logout}
+                  className="px-3 py-2 rounded-xl text-sm text-charcoal/40 hover:text-terracotta hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </nav>
 
             {/* Right Actions */}
@@ -318,7 +332,7 @@ function DarnaNavbar() {
                 {isSearchOpen && (
                   <motion.form
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 220, opacity: 1 }}
+                    animate={{ width: window?.innerWidth < 640 ? 160 : 220, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ duration: 0.3 }}
                     onSubmit={handleSearch}
@@ -419,22 +433,45 @@ function DarnaNavbar() {
                 </button>
               ))}
               <Separator className="my-2 bg-terracotta/10" />
-              <button
-                onClick={() => {
-                  setAdmin(!isAdmin); setView('admin'); setIsMobileOpen(false);
-                }}
-                className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-                Tableau de bord
-              </button>
-              <button
-                onClick={() => { setView('orders'); setIsMobileOpen(false); }}
-                className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
-              >
-                <Package className="w-4 h-4" />
-                Mes Commandes
-              </button>
+              {user.isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-2 px-4 py-2 text-sm text-charcoal/70">
+                    <User className="w-4 h-4 text-terracotta" />
+                    <span className="font-medium">{user.name || user.email}</span>
+                  </div>
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={() => { setView('admin'); setIsMobileOpen(false); }}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
+                    >
+                      <BarChart3 className="w-4 h-4 text-terracotta" />
+                      Tableau de bord
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setView('orders'); setIsMobileOpen(false); }}
+                    className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
+                  >
+                    <Package className="w-4 h-4 text-olive" />
+                    Mes Commandes
+                  </button>
+                  <button
+                    onClick={() => { logout(); setIsMobileOpen(false); }}
+                    className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-terracotta/60 hover:bg-sand transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    D\u00e9connexion
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => { setLoginOpen(true); setIsMobileOpen(false); }}
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
+                >
+                  <User className="w-4 h-4 text-terracotta" />
+                  Connexion
+                </button>
+              )}
               <Separator className="my-2 bg-terracotta/10" />
               <div className="flex items-center justify-between px-4 py-2">
                 <span className="text-xs text-charcoal/50">Devise</span>
@@ -446,6 +483,43 @@ function DarnaNavbar() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Login Dialog */}
+      <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
+        <DialogContent className="sm:max-w-md bg-white border-terracotta/10">
+          <DialogHeader>
+            <DialogTitle className="text-charcoal">Connexion</DialogTitle>
+            <DialogDescription>Entrez vos identifiants pour accéder à votre compte</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            const email = fd.get('email') as string;
+            const password = fd.get('password') as string;
+            const success = login(email, password);
+            if (success) {
+              setLoginOpen(false);
+              toast.success('Bienvenue !');
+            } else {
+              toast.error('Identifiants incorrects');
+            }
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input name="email" type="email" placeholder="email@exemple.com" required className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Mot de passe</Label>
+              <Input name="password" type="password" placeholder="••••••" required className="rounded-xl" />
+            </div>
+            <div className="bg-sand/50 rounded-xl p-3 text-xs text-charcoal/60 space-y-1">
+              <p className="font-semibold text-charcoal/80">Comptes de démonstration :</p>
+              <p>Admin : admin@darna.dz / admin123</p>
+              <p>Client : amina@email.com / amina123</p>
+            </div>
+            <Button type="submit" className="w-full bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">Se connecter</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -561,7 +635,10 @@ function HomeView() {
       setFeaturedProducts(prodData.products || []);
       setCategories(catData || []);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch((err) => {
+      setLoading(false);
+      toast.error('Erreur de chargement', { description: 'Veuillez réessayer' });
+    });
   }, []);
 
   const categoryIcons: Record<string, React.ElementType> = {
@@ -719,8 +796,8 @@ function HomeView() {
               >
                 <Card className="group border-0 bg-white hover:shadow-xl transition-all duration-500 rounded-2xl h-full">
                   <CardContent className="p-6 text-center">
-                    <div className={`w-16 h-16 rounded-2xl bg-${item.color}/10 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-500`}>
-                      <item.icon className={`w-8 h-8 text-${item.color}`} />
+                    <div className={`w-16 h-16 rounded-2xl ${getColor(item.color).bg} flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-500`}>
+                      <item.icon className={`w-8 h-8 ${getColor(item.color).text}`} />
                     </div>
                     <h3 className="font-bold text-charcoal text-lg mb-2">{item.title}</h3>
                     <p className="text-sm text-charcoal/55 leading-relaxed">{item.desc}</p>
@@ -823,7 +900,7 @@ function HomeView() {
       {/* ===== TESTIMONIAL / STORY SECTION ===== */}
       <section id="story-section" className="py-20 bg-sand/50 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03]">
-          <ZelligePattern className="w-full h-full text-charcoal" />
+          <ZelligePattern className="w-full h-full text-charcoal" id="zellige-story" />
         </div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <motion.div
@@ -864,7 +941,7 @@ function HomeView() {
           >
             <Card className="border-0 bg-gradient-to-r from-terracotta via-terracotta to-terracotta-dark overflow-hidden rounded-3xl relative">
               <div className="absolute inset-0 opacity-10">
-                <ZelligePattern className="w-full h-full text-cream" />
+                <ZelligePattern className="w-full h-full text-cream" id="zellige-cta" />
               </div>
               <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 relative">
                 <div className="flex-1">
@@ -925,7 +1002,9 @@ function CatalogView() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    api('/api/categories').then(r => r.json()).then(setCategories).catch(() => {});
+    api('/api/categories').then(r => r.json()).then(setCategories).catch((err) => {
+      toast.error('Erreur de chargement', { description: 'Veuillez réessayer' });
+    });
   }, []);
 
   useEffect(() => {
@@ -1028,7 +1107,7 @@ function CatalogView() {
                 initial={{ opacity: 0, width: 0 }}
                 animate={{ opacity: 1, width: 260 }}
                 exit={{ opacity: 0, width: 0 }}
-                className="hidden lg:block flex-shrink-0 overflow-hidden"
+                className="lg:block flex-shrink-0 overflow-hidden"
               >
                 <Card className="border-0 shadow-sm sticky top-24 bg-white rounded-2xl">
                   <CardContent className="p-6 space-y-6">
@@ -1166,8 +1245,8 @@ function ProductDetailView() {
           setProduct(prodRes.product);
           setRecommendations(recRes.recommendations || []);
           if (prodRes.product) {
-            const colors = JSON.parse(prodRes.product.colors || '[]');
-            const materials = JSON.parse(prodRes.product.materials || '[]');
+            const colors = safeJSONParse(prodRes.product.colors || '[]', []);
+            const materials = safeJSONParse(prodRes.product.materials || '[]', []);
             if (colors.length > 0) setSelectedColor(colors[0]);
             if (materials.length > 0) setSelectedMaterial(materials[0]);
           }
@@ -1213,9 +1292,9 @@ function ProductDetailView() {
     );
   }
 
-  const images = JSON.parse(product.images || '[]') as string[];
-  const colors = JSON.parse(product.colors || '[]') as string[];
-  const materials = JSON.parse(product.materials || '[]') as string[];
+  const images = safeJSONParse(product.images || '[]', []) as string[];
+  const colors = safeJSONParse(product.colors || '[]', []) as string[];
+  const materials = safeJSONParse(product.materials || '[]', []) as string[];
   const discount = product.comparePrice ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100) : 0;
 
   const productType = product.slug.split('-')[0] === 'aura' ? 'headphones'
@@ -1457,7 +1536,10 @@ function ProductDetailView() {
                 size="lg"
                 variant="outline"
                 className="h-14 w-14 rounded-xl border-terracotta/15 hover:bg-terracotta/5 hover:text-terracotta"
-                onClick={() => toast.info('Lien copi\u00e9 !')}
+                onClick={() => {
+                  navigator.clipboard?.writeText(window.location.href);
+                  toast.info('Lien copi\u00e9 !');
+                }}
               >
                 <Share2 className="w-5 h-5" />
               </Button>
@@ -1538,7 +1620,7 @@ function ProductDetailView() {
 // =============================================
 function CheckoutView() {
   const { items, getTotal, clearCart } = useCartStore();
-  const { setView, currency } = useAppStore();
+  const { setView, currency, user } = useAppStore();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     fullName: '', phone: '', email: '', address: '', wilaya: '', commune: '',
@@ -1556,7 +1638,7 @@ function CheckoutView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: 'demo',
+          userId: user.id || 'demo',
           total,
           subtotal,
           tax: 0,
@@ -1884,7 +1966,7 @@ function ProfileView() {
           <Card className="border-0 shadow-sm bg-gradient-to-r from-terracotta to-terracotta-dark rounded-2xl overflow-hidden">
             <CardContent className="p-6 md:p-8 text-cream relative">
               <div className="absolute inset-0 opacity-5">
-                <ZelligePattern className="w-full h-full text-cream" />
+                <ZelligePattern className="w-full h-full text-cream" id="zellige-profile" />
               </div>
               <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
                 <div className="w-16 h-16 rounded-2xl bg-cream/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
@@ -1959,9 +2041,9 @@ function ProfileView() {
                 <Card className={`border-0 shadow-sm rounded-2xl text-center ${badge.earned ? 'bg-white' : 'bg-charcoal/5 opacity-60'}`}>
                   <CardContent className="p-4">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 ${
-                      badge.earned ? `bg-${badge.color}/15` : 'bg-charcoal/10'
+                      badge.earned ? getColor(badge.color).bg : 'bg-charcoal/10'
                     }`}>
-                      <badge.icon className={`w-6 h-6 ${badge.earned ? `text-${badge.color}` : 'text-charcoal/30'}`} />
+                      <badge.icon className={`w-6 h-6 ${badge.earned ? getColor(badge.color).text : 'text-charcoal/30'}`} />
                     </div>
                     <p className="text-xs font-semibold text-charcoal">{badge.name}</p>
                     <p className="text-[10px] text-charcoal/40 mt-0.5">{badge.desc}</p>
@@ -2047,7 +2129,10 @@ function OrdersView() {
     api('/api/orders')
       .then(r => r.json())
       .then(data => { setOrders(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        setLoading(false);
+        toast.error('Erreur de chargement', { description: 'Veuillez réessayer' });
+      });
   }, []);
 
   const statusColors: Record<string, string> = {
@@ -2159,7 +2244,10 @@ function AdminDashboardView() {
     ]).then(([analytics, productsData]) => {
       setData({ ...analytics, allProducts: productsData.products || [] });
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch((err) => {
+      setLoading(false);
+      toast.error('Erreur de chargement', { description: 'Veuillez réessayer' });
+    });
   }, []);
 
   if (loading || !data) {
@@ -2210,8 +2298,8 @@ function AdminDashboardView() {
               <Card className="border-0 shadow-sm bg-white rounded-2xl hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`w-10 h-10 rounded-xl bg-${kpi.color}/10 flex items-center justify-center`}>
-                      <kpi.icon className={`w-5 h-5 text-${kpi.color}`} />
+                    <div className={`w-10 h-10 rounded-xl ${getColor(kpi.color).bg} flex items-center justify-center`}>
+                      <kpi.icon className={`w-5 h-5 ${getColor(kpi.color).text}`} />
                     </div>
                     <Badge className="bg-olive/10 text-olive border-olive/20 rounded-full text-xs">
                       {kpi.change}
@@ -2394,8 +2482,8 @@ function AdminDashboardView() {
                   {allProducts.map((product: any) => (
                     <div key={product.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-sand/70 transition-colors">
                       <div className="w-12 h-12 rounded-xl bg-sand overflow-hidden flex-shrink-0">
-                        {JSON.parse(product.images || '[]')[0] ? (
-                          <img src={JSON.parse(product.images || '[]')[0]} alt="" className="w-full h-full object-cover" />
+                        {safeJSONParse(product.images || '[]', [])[0] ? (
+                          <img src={safeJSONParse(product.images || '[]', [])[0]} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Package className="w-5 h-5 text-charcoal/20" />
@@ -2549,7 +2637,8 @@ function AdminDashboardView() {
 // MAIN PAGE COMPONENT
 // =============================================
 export default function Page() {
-  const { view } = useAppStore();
+  const { view, isAdmin: isAdminFn } = useAppStore();
+  const isAdmin = isAdminFn();
 
   const renderView = () => {
     switch (view) {
@@ -2564,7 +2653,7 @@ export default function Page() {
       case 'orders':
         return <OrdersView />;
       case 'admin':
-        return <AdminDashboardView />;
+        return isAdmin() && <AdminDashboardView />;
       default:
         return <HomeView />;
     }

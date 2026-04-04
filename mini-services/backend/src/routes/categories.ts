@@ -64,9 +64,10 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { id: _cid, createdAt: _ca, updatedAt: _ua, products: _prod, _count: _cnt, ...updateData } = req.body;
     const category = await db.category.update({
       where: { id },
-      data: req.body,
+      data: updateData,
     });
     res.json(category);
   } catch (error) {

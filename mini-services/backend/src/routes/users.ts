@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import db from '../config/database.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 
@@ -63,8 +64,17 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { email, name, role = 'customer', avatar, password } = req.body;
+
+    // Check for duplicate email
+    const existingUser = await db.user.findUnique({ where: { email } });
+    if (existingUser) {
+      res.status(409).json({ error: 'A user with this email already exists.' });
+      return;
+    }
+
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : '';
     const user = await db.user.create({
-      data: { email, name, role, avatar, password: password || '' },
+      data: { email, name, role, avatar, password: hashedPassword },
     });
     res.status(201).json(user);
   } catch (error) {
@@ -89,9 +99,16 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
       delete req.body.role;
     }
 
+    // Destructure and handle password hashing, strip sensitive fields
+    const { id: _id, createdAt: _ca, _count: _co, badges: _ba, pointHistory: _ph, password, ...updateData } = req.body;
+
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
     const user = await db.user.update({
       where: { id },
-      data: req.body,
+      data: updateData,
     });
     res.json(user);
   } catch (error) {

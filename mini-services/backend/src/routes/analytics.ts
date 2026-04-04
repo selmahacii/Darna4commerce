@@ -56,30 +56,35 @@ router.get('/summary', requireAdmin, async (_req: Request, res: Response) => {
       },
     });
 
-    // Monthly sales trend (last 6 months)
-    const monthlySales = [
-      { month: 'Jan', sales: 24500, orders: 156 },
-      { month: 'Fév', sales: 31200, orders: 189 },
-      { month: 'Mar', sales: 28900, orders: 178 },
-      { month: 'Avr', sales: 35600, orders: 210 },
-      { month: 'Mai', sales: 42300, orders: 245 },
-      { month: 'Jun', sales: 38700, orders: 223 },
-    ];
+    // Monthly sales trend (last 6 months) — computed from real order data
+    const monthlySales = [];
+    for (let i = 5; i >= 0; i--) {
+      const start = new Date();
+      start.setMonth(start.getMonth() - i, 1);
+      const end = new Date();
+      end.setMonth(end.getMonth() - i + 1, 0);
+      end.setHours(23, 59, 59, 999);
+      const monthOrders = await db.order.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { total: true },
+      });
+      const monthLabel = start.toLocaleDateString('fr-FR', { month: 'short' });
+      monthlySales.push({
+        month: monthLabel,
+        sales: monthOrders.reduce((s, o) => s + o.total, 0),
+        orders: monthOrders.length,
+      });
+    }
 
-    // Visitor analytics
+    // Visitor analytics — computed from AnalyticsEvent table
+    const totalEvents = await db.analyticsEvent.count();
+    const uniqueSessions = (await db.analyticsEvent.groupBy({
+      by: ['sessionId'],
+    })).length;
     const visitorStats = {
-      totalVisitors: 45230,
-      uniqueVisitors: 28450,
-      bounceRate: 32.5,
-      avgSessionDuration: '4m 32s',
-      pageViews: 128900,
-      topPages: [
-        { path: '/catalog', views: 18500 },
-        { path: '/product/babouches-cuir-artisanal', views: 12300 },
-        { path: '/product/couverture-berbere-tissage', views: 9800 },
-        { path: '/product/collier-fibule-kabyle-argent', views: 8700 },
-        { path: '/product/lanterne-laiton-forge', views: 7600 },
-      ],
+      totalVisitors: uniqueSessions,
+      uniqueVisitors: uniqueSessions,
+      events: totalEvents,
     };
 
     res.json({

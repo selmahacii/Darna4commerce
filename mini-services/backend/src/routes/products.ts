@@ -143,9 +143,10 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { id: _pid, rating: _r, reviewCount: _rc, createdAt: _ca, updatedAt: _ua, category: _cat, reviews: _rev, orderItems: _oi, ...updateData } = req.body;
     const product = await db.product.update({
       where: { id },
-      data: req.body,
+      data: updateData,
     });
     res.json(product);
   } catch (error) {

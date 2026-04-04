@@ -84,47 +84,51 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     // Use authenticated user's ID
     const userId = req.user!.id;
 
-    const order = await db.order.create({
-      data: {
-        userId,
-        total: body.total,
-        subtotal: body.subtotal,
-        tax: body.tax || 0,
-        shipping: body.shipping || 0,
-        address: body.address,
-        city: body.city,
-        country: body.country,
-        zipCode: body.zipCode,
-        paymentMethod: body.paymentMethod || 'credit_card',
-        note: body.note,
-        items: {
-          create: body.items.map((item: {
-            productId: string;
-            quantity: number;
-            price: number;
-            color?: string;
-            material?: string;
-            engraving?: string;
-          }) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            color: item.color,
-            material: item.material,
-            engraving: item.engraving,
-          })),
+    const order = await db.$transaction(async (tx) => {
+      const newOrder = await tx.order.create({
+        data: {
+          userId,
+          total: body.total,
+          subtotal: body.subtotal,
+          tax: body.tax || 0,
+          shipping: body.shipping || 0,
+          address: body.address,
+          city: body.city,
+          country: body.country,
+          zipCode: body.zipCode,
+          paymentMethod: body.paymentMethod || 'credit_card',
+          note: body.note,
+          items: {
+            create: body.items.map((item: {
+              productId: string;
+              quantity: number;
+              price: number;
+              color?: string;
+              material?: string;
+              engraving?: string;
+            }) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+              color: item.color,
+              material: item.material,
+              engraving: item.engraving,
+            })),
+          },
         },
-      },
-      include: { items: { include: { product: true } } },
-    });
-
-    // Update product stock
-    for (const item of body.items) {
-      await db.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } },
+        include: { items: { include: { product: true } } },
       });
-    }
+
+      // Update product stock within the same transaction
+      for (const item of body.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
+
+      return newOrder;
+    });
 
     res.status(201).json(order);
   } catch (error) {

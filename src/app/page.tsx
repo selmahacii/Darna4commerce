@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAppStore, type View } from '@/stores/app-store';
 import { safeJSONParse } from '@/lib/format';
+import AdminDashboard from '@/components/ecommerce/AdminDashboard';
 
 // Backend API helper — routes all calls to Node.js backend on port 3003
 const BACKEND_PORT = '3003';
@@ -40,6 +41,7 @@ import ProductCard from '@/components/ecommerce/ProductCard';
 import CartDrawer from '@/components/ecommerce/CartDrawer';
 import ProductViewerFallback from '@/components/three/ProductViewerFallback';
 import { toast } from 'sonner';
+import { UserPlus, Loader2 } from 'lucide-react';
 import { ScrollProgress, SectionReveal, AnimatedCounter, TextReveal, MagneticButton } from '@/components/ui/AnimatedElements';
 
 // Dynamic import for 3D viewer
@@ -194,6 +196,123 @@ class ErrorBoundary extends React.Component<
 }
 
 // =============================================
+// AUTH DIALOG (Login / Register)
+// =============================================
+function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [loading, setLoading] = useState(false);
+  const { login, register } = useAppStore();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const fd = new FormData(e.currentTarget);
+    const email = fd.get('email') as string;
+    const password = fd.get('password') as string;
+    const success = await login(email, password);
+    setLoading(false);
+    if (success) {
+      onOpenChange(false);
+      toast.success('Bienvenue !');
+    } else {
+      toast.error('Identifiants incorrects');
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const fd = new FormData(e.currentTarget);
+    const name = fd.get('name') as string;
+    const email = fd.get('email') as string;
+    const password = fd.get('password') as string;
+    if (password.length < 6) {
+      setLoading(false);
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    const success = await register(email, name, password);
+    setLoading(false);
+    if (success) {
+      onOpenChange(false);
+      toast.success('Compte créé avec succès !');
+    } else {
+      toast.error('Erreur lors de la création du compte');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); setMode('login'); }}>
+      <DialogContent className="sm:max-w-md bg-white border-terracotta/10">
+        <DialogHeader>
+          <DialogTitle className="text-charcoal">
+            {mode === 'login' ? 'Connexion' : 'Créer un compte'}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'login'
+              ? 'Entrez vos identifiants pour accéder à votre compte'
+              : 'Rejoignez Darna et découvrez nos produits artisanaux'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {mode === 'login' ? (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input name="email" type="email" placeholder="email@exemple.com" required className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Mot de passe</Label>
+              <Input name="password" type="password" placeholder="••••••" required className="rounded-xl" />
+            </div>
+            <div className="bg-sand/50 rounded-xl p-3 text-xs text-charcoal/60 space-y-1">
+              <p className="font-semibold text-charcoal/80">Comptes de démonstration :</p>
+              <p>Admin : admin@darna.dz / admin123</p>
+              <p>Client : amina@email.com / amina123</p>
+            </div>
+            <Button type="submit" disabled={loading} className="w-full bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Se connecter
+            </Button>
+            <p className="text-center text-sm text-charcoal/50">
+              Pas encore de compte ?{' '}
+              <button type="button" onClick={() => setMode('register')} className="text-terracotta hover:underline font-medium">
+                Créer un compte
+              </button>
+            </p>
+          </form>
+        ) : (
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nom complet *</Label>
+              <Input name="name" type="text" placeholder="Votre nom" required className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input name="email" type="email" placeholder="email@exemple.com" required className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Mot de passe *</Label>
+              <Input name="password" type="password" placeholder="Min. 6 caractères" required minLength={6} className="rounded-xl" />
+            </div>
+            <Button type="submit" disabled={loading} className="w-full bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Créer mon compte
+            </Button>
+            <p className="text-center text-sm text-charcoal/50">
+              Déjà un compte ?{' '}
+              <button type="button" onClick={() => setMode('login')} className="text-terracotta hover:underline font-medium">
+                Se connecter
+              </button>
+            </p>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// =============================================
 // NAVBAR
 // =============================================
 function DarnaNavbar() {
@@ -202,8 +321,10 @@ function DarnaNavbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
-  const { view, setView, isAdmin: isAdminFn, setCurrency, currency, filters, setFilters, user, login, logout } = useAppStore();
+  const { view, setView, isAdmin: isAdminFn, isAuthenticated: isAuthenticatedFn, setCurrency, currency, filters, setFilters, auth, login, register, logout } = useAppStore();
   const isAdmin = isAdminFn();
+  const isLoggedIn = isAuthenticatedFn();
+  const user = auth.user;
   const { toggleCart, getItemCount } = useCartStore();
   const itemCount = getItemCount();
 
@@ -290,7 +411,7 @@ function DarnaNavbar() {
               ))}
 
               {/* Auth / Admin */}
-              {user.isAuthenticated && user.role === 'admin' ? (
+              {isLoggedIn && user?.role === 'admin' ? (
                 <button
                   onClick={() => setView('admin')}
                   className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
@@ -298,7 +419,7 @@ function DarnaNavbar() {
                   <BarChart3 className="w-4 h-4" />
                   Tableau de bord
                 </button>
-              ) : user.isAuthenticated ? (
+              ) : isLoggedIn ? (
                 <button
                   onClick={() => { setView('orders'); }}
                   className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
@@ -315,7 +436,7 @@ function DarnaNavbar() {
                   Connexion
                 </button>
               )}
-              {user.isAuthenticated && (
+              {isLoggedIn && (
                 <button
                   onClick={logout}
                   className="px-3 py-2 rounded-xl text-sm text-charcoal/40 hover:text-terracotta hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
@@ -433,13 +554,13 @@ function DarnaNavbar() {
                 </button>
               ))}
               <Separator className="my-2 bg-terracotta/10" />
-              {user.isAuthenticated ? (
+              {isLoggedIn ? (
                 <>
                   <div className="flex items-center gap-2 px-4 py-2 text-sm text-charcoal/70">
                     <User className="w-4 h-4 text-terracotta" />
-                    <span className="font-medium">{user.name || user.email}</span>
+                    <span className="font-medium">{user?.name || user?.email}</span>
                   </div>
-                  {user.role === 'admin' && (
+                  {user?.role === 'admin' && (
                     <button
                       onClick={() => { setView('admin'); setIsMobileOpen(false); }}
                       className="w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 text-charcoal/70 hover:bg-sand transition-colors"
@@ -483,43 +604,8 @@ function DarnaNavbar() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Login Dialog */}
-      <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
-        <DialogContent className="sm:max-w-md bg-white border-terracotta/10">
-          <DialogHeader>
-            <DialogTitle className="text-charcoal">Connexion</DialogTitle>
-            <DialogDescription>Entrez vos identifiants pour accéder à votre compte</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            const email = fd.get('email') as string;
-            const password = fd.get('password') as string;
-            const success = login(email, password);
-            if (success) {
-              setLoginOpen(false);
-              toast.success('Bienvenue !');
-            } else {
-              toast.error('Identifiants incorrects');
-            }
-          }} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input name="email" type="email" placeholder="email@exemple.com" required className="rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <Label>Mot de passe</Label>
-              <Input name="password" type="password" placeholder="••••••" required className="rounded-xl" />
-            </div>
-            <div className="bg-sand/50 rounded-xl p-3 text-xs text-charcoal/60 space-y-1">
-              <p className="font-semibold text-charcoal/80">Comptes de démonstration :</p>
-              <p>Admin : admin@darna.dz / admin123</p>
-              <p>Client : amina@email.com / amina123</p>
-            </div>
-            <Button type="submit" className="w-full bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">Se connecter</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Auth Dialog (Login / Register) */}
+      <AuthDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </>
   );
 }

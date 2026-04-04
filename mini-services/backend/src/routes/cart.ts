@@ -1,17 +1,35 @@
 import { Router, Request, Response } from 'express';
 import db from '../config/database.js';
+import { authenticate, optionalAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/cart/:sessionId — Get cart for a session
-router.get('/:sessionId', async (req: Request, res: Response) => {
+// GET /api/cart/:sessionId — Get cart for a session (public / optional auth)
+router.get('/:sessionId', optionalAuth, async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    const cartItems = await db.cartItem.findMany({
-      where: { sessionId },
-      include: { product: true },
-      orderBy: { createdAt: 'asc' },
-    });
+
+    // If authenticated, try to get cart by userId first
+    let cartItems;
+    if (req.user) {
+      cartItems = await db.cartItem.findMany({
+        where: {
+          OR: [
+            { userId: req.user.id },
+            { sessionId },
+          ],
+        },
+        include: { product: true },
+        orderBy: { createdAt: 'asc' },
+      });
+    } else {
+      cartItems = await db.cartItem.findMany({
+        where: { sessionId },
+        include: { product: true },
+        orderBy: { createdAt: 'asc' },
+      });
+    }
+
     res.json(cartItems);
   } catch (error) {
     console.error('Error fetching cart:', error);
@@ -19,18 +37,19 @@ router.get('/:sessionId', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/cart — Add item to cart
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/cart — Add item to cart (authenticated)
+router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
-    const { userId, sessionId, productId, quantity = 1, color, material, engraving } = req.body;
+    const { sessionId, productId, quantity = 1, color, material, engraving } = req.body;
 
-    // Check if item already in cart
+    // Use authenticated user's ID
+    const userId = req.user!.id;
+
+    // Check if item already in cart for this user
     const existing = await db.cartItem.findFirst({
       where: {
-        OR: [
-          { userId: userId || undefined, productId },
-          ...(sessionId ? [{ sessionId, productId }] : []),
-        ],
+        userId,
+        productId,
       },
     });
 
@@ -53,26 +72,50 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/cart/:id — Update cart item quantity
-router.put('/:id', async (req: Request, res: Response) => {
+// PUT /api/cart/:id — Update cart item quantity (authenticated)
+router.put('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { quantity, color, material, engraving } = req.body;
-    const cartItem = await db.cartItem.update({
+
+    // Verify cart item belongs to user
+    const cartItem = await db.cartItem.findUnique({ where: { id } });
+    if (!cartItem) {
+      res.status(404).json({ error: 'Cart item not found.' });
+      return;
+    }
+    if (cartItem.userId && cartItem.userId !== req.user!.id) {
+      res.status(403).json({ error: 'You can only modify your own cart items.' });
+      return;
+    }
+
+    const updated = await db.cartItem.update({
       where: { id },
       data: { quantity, color, material, engraving },
     });
-    res.json(cartItem);
+    res.json(updated);
   } catch (error) {
     console.error('Error updating cart item:', error);
     res.status(500).json({ error: 'Failed to update cart item' });
   }
 });
 
-// DELETE /api/cart/:id — Remove item from cart
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /api/cart/:id — Remove item from cart (authenticated)
+router.delete('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Verify cart item belongs to user
+    const cartItem = await db.cartItem.findUnique({ where: { id } });
+    if (!cartItem) {
+      res.status(404).json({ error: 'Cart item not found.' });
+      return;
+    }
+    if (cartItem.userId && cartItem.userId !== req.user!.id) {
+      res.status(403).json({ error: 'You can only modify your own cart items.' });
+      return;
+    }
+
     await db.cartItem.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {
@@ -81,11 +124,20 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/cart/session/:sessionId — Clear entire cart for a session
-router.delete('/session/:sessionId', async (req: Request, res: Response) => {
+// DELETE /api/cart/session/:sessionId — Clear entire cart for a session (authenticated)
+router.delete('/session/:sessionId', authenticate, async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    await db.cartItem.deleteMany({ where: { sessionId } });
+
+    // Delete by user ID or session ID
+    await db.cartItem.deleteMany({
+      where: {
+        OR: [
+          { userId: req.user!.id },
+          ...(sessionId ? [{ sessionId }] : []),
+        ],
+      },
+    });
     res.json({ success: true });
   } catch (error) {
     console.error('Error clearing cart:', error);

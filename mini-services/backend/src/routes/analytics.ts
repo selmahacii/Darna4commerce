@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import db from '../config/database.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/analytics/summary — Dashboard analytics
-router.get('/summary', async (_req: Request, res: Response) => {
+// GET /api/analytics/summary — Dashboard analytics (admin only)
+router.get('/summary', requireAdmin, async (_req: Request, res: Response) => {
   try {
     const summary = {
       totalProducts: await db.product.count(),
@@ -95,8 +96,8 @@ router.get('/summary', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/analytics/products — Product performance analytics
-router.get('/products', async (_req: Request, res: Response) => {
+// GET /api/analytics/products — Product performance analytics (admin only)
+router.get('/products', requireAdmin, async (_req: Request, res: Response) => {
   try {
     const products = await db.product.findMany({
       select: {
@@ -138,7 +139,7 @@ router.get('/products', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/analytics/events — Track analytics events
+// POST /api/analytics/events — Track analytics events (public)
 router.post('/events', async (req: Request, res: Response) => {
   try {
     const { event, properties = '{}', sessionId, userId } = req.body;

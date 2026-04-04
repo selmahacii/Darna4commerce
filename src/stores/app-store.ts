@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type View = 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'admin' | 'profile' | 'orders';
 
@@ -14,15 +15,25 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'user';
-  isAuthenticated: boolean;
+  role: 'admin' | 'customer';
+  avatar?: string;
+  points: number;
+  level: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  isLoading: boolean;
 }
 
 interface AppState {
   view: View;
   previousView: View;
   selectedProductId: string | null;
-  user: User | null;
+  auth: AuthState;
   filters: FilterState;
   currency: string;
   language: string;
@@ -30,14 +41,27 @@ interface AppState {
   setView: (view: View) => void;
   goBack: () => void;
   selectProduct: (id: string) => void;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, name: string, password: string) => Promise<boolean>;
   logout: () => void;
+  restoreSession: () => Promise<void>;
   isAdmin: () => boolean;
+  isAuthenticated: () => boolean;
   setFilters: (filters: Partial<FilterState>) => void;
   resetFilters: () => void;
   setCurrency: (currency: string) => void;
   setLanguage: (language: string) => void;
 }
+
+const BACKEND_PORT = '3003';
+const authApi = (path: string, options?: RequestInit) =>
+  fetch(`${path}${path.includes('?') ? '&' : '?'}XTransformPort=${BACKEND_PORT}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
 
 const defaultFilters: FilterState = {
   search: '',
@@ -47,51 +71,105 @@ const defaultFilters: FilterState = {
   sortBy: 'newest',
 };
 
-// Demo users for local authentication
-const DEMO_USERS: Array<{ email: string; password: string; user: User }> = [
-  {
-    email: 'admin@darna.dz',
-    password: 'admin123',
-    user: { id: '1', email: 'admin@darna.dz', name: 'Admin Darna', role: 'admin', isAuthenticated: true },
-  },
-  {
-    email: 'amina@email.com',
-    password: 'amina123',
-    user: { id: '2', email: 'amina@email.com', name: 'Amina Benali', role: 'user', isAuthenticated: true },
-  },
-];
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      view: 'home',
+      previousView: 'home',
+      selectedProductId: null,
+      auth: { user: null, token: null, isLoading: false },
+      filters: defaultFilters,
+      currency: 'DZD',
+      language: 'fr',
 
-export const useAppStore = create<AppState>((set, get) => ({
-  view: 'home',
-  previousView: 'home',
-  selectedProductId: null,
-  user: null,
-  filters: defaultFilters,
-  currency: 'USD',
-  language: 'fr',
+      setView: (view) => set({ previousView: get().view, view }),
+      goBack: () => {
+        const prev = get().previousView;
+        set({ view: prev, previousView: 'home' });
+      },
+      selectProduct: (id) => set({ selectedProductId: id, view: 'product' }),
 
-  setView: (view) => set({ previousView: get().view, view }),
-  goBack: () => {
-    const prev = get().previousView;
-    set({ view: prev, previousView: 'home' });
-  },
-  selectProduct: (id) => set({ selectedProductId: id, view: 'product' }),
+      login: async (email: string, password: string): Promise<boolean> => {
+        set((s) => ({ auth: { ...s.auth, isLoading: true } }));
+        try {
+          const res = await authApi('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          });
+          const data = await res.json();
+          if (res.ok && data.token) {
+            set({
+              auth: { user: data.user, token: data.token, isLoading: false },
+            });
+            return true;
+          }
+          set((s) => ({ auth: { ...s.auth, isLoading: false } }));
+          return false;
+        } catch {
+          set((s) => ({ auth: { ...s.auth, isLoading: false } }));
+          return false;
+        }
+      },
 
-  login: (email: string, password: string) => {
-    const found = DEMO_USERS.find((u) => u.email === email && u.password === password);
-    if (found) {
-      set({ user: found.user });
-      return true;
+      register: async (email: string, name: string, password: string): Promise<boolean> => {
+        set((s) => ({ auth: { ...s.auth, isLoading: true } }));
+        try {
+          const res = await authApi('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ email, name, password }),
+          });
+          const data = await res.json();
+          if (res.ok && data.token) {
+            set({
+              auth: { user: data.user, token: data.token, isLoading: false },
+            });
+            return true;
+          }
+          set((s) => ({ auth: { ...s.auth, isLoading: false } }));
+          return false;
+        } catch {
+          set((s) => ({ auth: { ...s.auth, isLoading: false } }));
+          return false;
+        }
+      },
+
+      logout: () => {
+        set({ auth: { user: null, token: null, isLoading: false }, view: 'home' });
+      },
+
+      restoreSession: async () => {
+        const { token } = get().auth;
+        if (!token) return;
+        try {
+          const res = await authApi('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          if (res.ok && data.user) {
+            set((s) => ({ auth: { ...s.auth, user: data.user } }));
+          } else {
+            set({ auth: { user: null, token: null, isLoading: false } });
+          }
+        } catch {
+          // Token might be expired, silently clear
+        }
+      },
+
+      isAdmin: () => get().auth.user?.role === 'admin',
+      isAuthenticated: () => !!get().auth.user && !!get().auth.token,
+
+      setFilters: (filters) => set({ filters: { ...get().filters, ...filters } }),
+      resetFilters: () => set({ filters: defaultFilters }),
+      setCurrency: (currency) => set({ currency }),
+      setLanguage: (language) => set({ language }),
+    }),
+    {
+      name: 'darna-app-store',
+      partialize: (state) => ({
+        auth: { user: state.auth.user, token: state.auth.token },
+        currency: state.currency,
+        language: state.language,
+      }),
     }
-    return false;
-  },
-
-  logout: () => set({ user: null }),
-
-  isAdmin: () => get().user?.role === 'admin',
-
-  setFilters: (filters) => set({ filters: { ...get().filters, ...filters } }),
-  resetFilters: () => set({ filters: defaultFilters }),
-  setCurrency: (currency) => set({ currency }),
-  setLanguage: (language) => set({ language }),
-}));
+  )
+);

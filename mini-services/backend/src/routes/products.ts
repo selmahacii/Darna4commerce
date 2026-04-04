@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import db from '../config/database.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/products — List products with filtering, sorting, pagination
+// GET /api/products — List products with filtering, sorting, pagination (public)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const {
@@ -77,8 +78,8 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/products — Create a new product
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/products — Create a new product (admin only)
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const body = req.body;
     const product = await db.product.create({
@@ -108,7 +109,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/products/:id — Get single product with reviews and related products
+// GET /api/products/:id — Get single product with reviews and related products (public)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -138,8 +139,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/products/:id — Update a product
-router.put('/:id', async (req: Request, res: Response) => {
+// PUT /api/products/:id — Update a product (admin only)
+router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const product = await db.product.update({
@@ -153,8 +154,8 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/products/:id — Delete a product
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /api/products/:id — Delete a product (admin only)
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await db.product.delete({ where: { id } });

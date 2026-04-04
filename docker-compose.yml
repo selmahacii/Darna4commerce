@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  darna-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: darna-ecommerce
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/db/custom.db
+      - PORT=3003
+      - JWT_SECRET=darna-secret-key-2025
+      - JWT_EXPIRES_IN=7d
+    volumes:
+      - darna-data:/app/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+volumes:
+  darna-data:
+    driver: local

@@ -83,3 +83,72 @@ Stage Summary:
 - **Dynamic**: Toast feedback on all actions, loading states, error handling with retry guidance, clipboard share, persisted wishlist
 - **Roles**: Login system with demo credentials (admin@darna.dz/admin123, amina@email.com/amina123), admin dashboard protected by auth, derived isAdmin() method, no unprotected setAdmin
 - **Architecture**: Shared formatPrice utility used across all components, safe JSON parsing, persisted state (cart items, wishlist, user session — but not UI state like isOpen)
+
+---
+Task ID: 3
+Agent: Dockerfile Creator
+Task: Create Dockerfile and docker-compose for production deployment
+
+Work Log:
+- Read worklog (Tasks 1-3) to understand the full project architecture: Next.js 16 frontend (port 3000), Express 5 backend (port 3003), Caddy reverse proxy, shared SQLite database
+- Verified `next.config.ts` already has `output: "standalone"` — no changes needed
+- Analyzed backend: uses `"type": "module"`, bun runtime (`bun src/index.ts`), Prisma with relative DATABASE_URL (`file:../../../db/custom.db`)
+- Analyzed frontend: Next.js 16 with bun, build script copies static/public into standalone output, Prisma with absolute DATABASE_URL
+- Created `/home/z/my-project/.dockerignore` — excludes node_modules, .next, dist, .git, *.md, bun.lock, logs, examples/, download/, Docker files, .env, db/
+- Created `/home/z/my-project/docker-entrypoint.sh` — shell script that: sets DATABASE_URL for container paths, runs prisma generate/db push for backend, seeds database if empty (checks user count), runs prisma generate for frontend, starts backend in background with health check wait loop, starts Next.js frontend in foreground via exec
+- Created `/home/z/my-project/Dockerfile` — 3-stage multi-stage build using `oven/bun:1`:
+  - Stage 1 (deps): Installs dependencies for both frontend and backend with frozen lockfiles
+  - Stage 2 (builder): Copies all source, generates Prisma client, runs `bun run build` to produce standalone Next.js output
+  - Stage 3 (runner): Production image with non-root user (darna:1001), copies standalone build + static assets + backend code + Prisma clients, exposes port 3000, includes HEALTHCHECK, sets ENTRYPOINT to docker-entrypoint.sh
+- Created `/home/z/my-project/docker-compose.yml` — single service `darna-app` with port 3000, production env vars (NODE_ENV, DATABASE_URL, PORT, JWT_SECRET, JWT_EXPIRES_IN), persistent volume `darna-data` for /app/db, unless-stopped restart policy, healthcheck
+- Ran `npm run lint` — passes clean (exit code 0)
+
+Stage Summary:
+- **4 files created**: `.dockerignore`, `docker-entrypoint.sh`, `Dockerfile`, `docker-compose.yml`
+- **Multi-stage build**: 3 stages (deps → builder → runner) using `oven/bun:1` base image, bun exclusively (no npm/yarn)
+- **Security**: Non-root user (darna:1001), minimal production layers, health check endpoint
+- **Database**: Persistent SQLite via Docker volume (`darna-data:/app/db`), auto-seed on empty database
+- **Startup sequence**: Backend Prisma setup → seed check → backend API (background) → Next.js frontend (foreground)
+- **Deployment**: `docker compose up -d --build` to deploy, exposes port 3000 for Caddy proxy
+
+---
+## Task ID: 1
+Agent: Backend Auth System Developer
+Task: Implement JWT auth system with role-based access control
+
+Work Log:
+- Read worklog (Tasks 1-3, Dockerfile) and analyzed full project architecture
+- Added `password String` field to User model in both Prisma schemas (root + backend)
+- Ran `prisma db push --force-reset` to apply schema changes, regenerated Prisma clients for both projects
+- Installed bcryptjs + jsonwebtoken and their type definitions (manually copied to node_modules due to root-owned package.json)
+- Created `/home/z/my-project/mini-services/backend/src/middleware/auth.ts` with:
+  - `authenticate`: Extracts Bearer token, verifies JWT, attaches `req.user = { id, email, role }`
+  - `requireAdmin`: Self-contained auth+role check (authenticates token + verifies admin role)
+  - `optionalAuth`: Attaches user if token present, continues without if absent
+  - `generateToken`: Helper for signing JWT tokens with configurable expiry
+  - Extended Express Request type globally with `user?: AuthPayload`
+- Created `/home/z/my-project/mini-services/backend/src/routes/auth.ts` with:
+  - `POST /api/auth/register`: Email/name/password validation, duplicate check, bcrypt hash (10 rounds), returns user + JWT
+  - `POST /api/auth/login`: Email lookup, bcrypt compare, inactive check, returns user (no password) + JWT
+  - `GET /api/auth/me`: Protected route, returns user with order/review counts
+  - `PUT /api/auth/change-password`: Protected route, current password verification, min 6 chars for new password
+- Updated all 8 existing route files with auth middleware:
+  - `products.ts`: GET list/detail public; POST/PUT/DELETE admin-only
+  - `categories.ts`: GET public; POST/PUT/DELETE admin-only
+  - `orders.ts`: GET all admin-only; GET user orders/authenticated (own only); POST authenticated; PATCH status admin-only
+  - `users.ts`: GET list admin-only; GET/PUT own profile or admin; DELETE admin-only; POST points admin-only
+  - `reviews.ts`: GET by product public; POST authenticated; DELETE own review or admin
+  - `cart.ts`: GET session public (optionalAuth); POST/PUT/DELETE authenticated (ownership check)
+  - `ai.ts`: All routes admin-only (recommendations, search)
+  - `analytics.ts`: GET summary/products admin-only; POST events public
+- Updated `index.ts`: Mounted auth routes, updated health endpoint with auth info, updated startup banner
+- Updated seed script with bcrypt password hashing: admin@darna.dz/admin123 (admin), amina@email.com/amina123 (customer)
+- Updated `.env` with JWT_SECRET and JWT_EXPIRES_IN
+- Fixed bug: `requireAdmin` middleware initially only checked `req.user` without authenticating — fixed to self-authenticate
+
+Stage Summary:
+- **Full JWT auth system** with register, login, profile, and password change endpoints
+- **Role-based access control**: public routes (products/categories/reviews), authenticated routes (orders/cart/reviews/me), admin-only routes (product CRUD/category CRUD/analytics/users list)
+- **Security**: bcrypt password hashing (10 rounds), JWT tokens (7-day expiry), ownership checks (users can only modify own resources), no password returned in responses
+- **Demo credentials**: admin@darna.dz/admin123 (admin), amina@email.com/amina123 (customer)
+- **All routes tested**: 401 for unauthenticated, 403 for non-admin on admin routes, 200 for valid access, 409 for duplicate registration, 400 for invalid input

@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import db from '../config/database.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/orders — List all orders (last 50)
-router.get('/', async (_req: Request, res: Response) => {
+// GET /api/orders — List all orders (admin only)
+router.get('/', requireAdmin, async (_req: Request, res: Response) => {
   try {
     const orders = await db.order.findMany({
       include: {
@@ -21,10 +22,17 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/orders/user/:userId — Get orders for a specific user
-router.get('/user/:userId', async (req: Request, res: Response) => {
+// GET /api/orders/user/:userId — Get orders for a specific user (authenticated, own orders only)
+router.get('/user/:userId', authenticate, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
+
+    // Users can only see their own orders (unless admin)
+    if (req.user!.id !== userId && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'You can only view your own orders.' });
+      return;
+    }
+
     const orders = await db.order.findMany({
       where: { userId },
       include: {
@@ -39,8 +47,8 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/orders/:id — Get single order with items
-router.get('/:id', async (req: Request, res: Response) => {
+// GET /api/orders/:id — Get single order with items (authenticated)
+router.get('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const order = await db.order.findUnique({
@@ -54,6 +62,13 @@ router.get('/:id', async (req: Request, res: Response) => {
       res.status(404).json({ error: 'Order not found' });
       return;
     }
+
+    // Users can only see their own orders (unless admin)
+    if (req.user!.id !== order.userId && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'You can only view your own orders.' });
+      return;
+    }
+
     res.json(order);
   } catch (error) {
     console.error('Error fetching order:', error);
@@ -61,14 +76,17 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/orders — Create a new order with items
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/orders — Create a new order with items (authenticated)
+router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
     const body = req.body;
 
+    // Use authenticated user's ID
+    const userId = req.user!.id;
+
     const order = await db.order.create({
       data: {
-        userId: body.userId,
+        userId,
         total: body.total,
         subtotal: body.subtotal,
         tax: body.tax || 0,
@@ -115,8 +133,8 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/orders/:id/status — Update order status
-router.patch('/:id/status', async (req: Request, res: Response) => {
+// PATCH /api/orders/:id/status — Update order status (admin only)
+router.patch('/:id/status', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

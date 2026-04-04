@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import db from '../src/config/database.js';
 
 async function seed() {
@@ -212,17 +213,35 @@ async function seed() {
   }
   console.log(`✅ Created ${badges.length} badges`);
 
+  // Hash passwords
+  const adminPassword = await bcrypt.hash('admin123', 10);
+  const customerPassword = await bcrypt.hash('amina123', 10);
+
   // Admin user
   await db.user.create({
-    data: { email: 'admin@darna.dz', name: 'Mehdi Admin', role: 'admin', points: 15000, level: 8 },
+    data: {
+      email: 'admin@darna.dz',
+      name: 'Mehdi Admin',
+      role: 'admin',
+      password: adminPassword,
+      points: 15000,
+      level: 8,
+    },
   });
-  console.log('✅ Created admin user');
+  console.log('✅ Created admin user (admin@darna.dz / admin123)');
 
   // Demo customer
   await db.user.create({
-    data: { email: 'amina@email.com', name: 'Amina Benali', role: 'customer', points: 3200, level: 4 },
+    data: {
+      email: 'amina@email.com',
+      name: 'Amina Benali',
+      role: 'customer',
+      password: customerPassword,
+      points: 3200,
+      level: 4,
+    },
   });
-  console.log('✅ Created demo customer');
+  console.log('✅ Created demo customer (amina@email.com / amina123)');
 
   // Sample reviews
   const sampleReviews = [
@@ -276,8 +295,11 @@ async function seed() {
   console.log('\n🎉 Seed complete — Darna is ready!');
   console.log(`   📦 ${products.length} products`);
   console.log(`   📂 ${categories.length} categories`);
-  console.log(`   👤 2 users (admin + customer)`);
+  console.log(`   👤 2 users (admin + customer) — passwords are hashed`);
   console.log(`   🏅 ${badges.length} badges`);
+  console.log(`   🔐 Demo credentials:`);
+  console.log(`      Admin:  admin@darna.dz / admin123`);
+  console.log(`      User:   amina@email.com / amina123`);
 }
 
 seed()

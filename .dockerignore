@@ -1,0 +1,59 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+.next
+**/.next
+dist
+**/dist
+
+# Version control
+.git
+.gitignore
+
+# Documentation
+*.md
+!prisma/**/*.md
+
+# Lock files (regenerated in container)
+bun.lock
+**/bun.lock
+
+# Logs
+dev.log
+server.log
+*.log
+
+# Examples & downloads
+examples/
+download/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+docker-entrypoint.sh
+Caddyfile
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (set via docker-compose)
+.env
+**/.env
+
+# Database (mounted as volume)
+db/
+
+# Misc
+*.tsbuildinfo
+.eslintcache
+coverage

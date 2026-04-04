@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import db from '../config/database.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/users — List all users
-router.get('/', async (_req: Request, res: Response) => {
+// GET /api/users — List all users (admin only)
+router.get('/', requireAdmin, async (_req: Request, res: Response) => {
   try {
     const users = await db.user.findMany({
       select: {
@@ -28,10 +29,17 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/users/:id — Get single user with profile data
-router.get('/:id', async (req: Request, res: Response) => {
+// GET /api/users/:id — Get single user with profile data (authenticated)
+router.get('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Users can only see their own profile (unless admin)
+    if (req.user!.id !== id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'You can only view your own profile.' });
+      return;
+    }
+
     const user = await db.user.findUnique({
       where: { id },
       include: {
@@ -51,12 +59,12 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/users — Create a new user
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/users — Create a new user (admin only)
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { email, name, role = 'customer', avatar } = req.body;
+    const { email, name, role = 'customer', avatar, password } = req.body;
     const user = await db.user.create({
-      data: { email, name, role, avatar },
+      data: { email, name, role, avatar, password: password || '' },
     });
     res.status(201).json(user);
   } catch (error) {
@@ -65,10 +73,22 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/users/:id — Update user profile
-router.put('/:id', async (req: Request, res: Response) => {
+// PUT /api/users/:id — Update user profile (own profile or admin)
+router.put('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Users can only update their own profile (admin can update any)
+    if (req.user!.id !== id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'You can only update your own profile.' });
+      return;
+    }
+
+    // Prevent non-admin from changing role
+    if (req.user!.role !== 'admin' && req.body.role) {
+      delete req.body.role;
+    }
+
     const user = await db.user.update({
       where: { id },
       data: req.body,
@@ -80,8 +100,20 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/users/:id/points — Add points to user
-router.post('/:id/points', async (req: Request, res: Response) => {
+// DELETE /api/users/:id — Delete user (admin only)
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await db.user.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// POST /api/users/:id/points — Add points to user (admin only)
+router.post('/:id/points', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { points, reason } = req.body;

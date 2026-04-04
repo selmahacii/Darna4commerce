@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import db from '../config/database.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/categories — List all categories with product counts
+// GET /api/categories — List all categories with product counts (public)
 router.get('/', async (_req: Request, res: Response) => {
   try {
     const categories = await db.category.findMany({
@@ -17,8 +18,8 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/categories — Create a new category
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/categories — Create a new category (admin only)
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name, slug, description, image, parentId } = req.body;
     const category = await db.category.create({
@@ -37,13 +38,13 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/categories/:id — Get single category
+// GET /api/categories/:id — Get single category (public)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const category = await db.category.findUnique({
       where: { id },
-      include: { 
+      include: {
         _count: { select: { products: true } },
         products: { take: 10, orderBy: { createdAt: 'desc' } },
       },
@@ -59,8 +60,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/categories/:id — Update category
-router.put('/:id', async (req: Request, res: Response) => {
+// PUT /api/categories/:id — Update category (admin only)
+router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const category = await db.category.update({
@@ -74,8 +75,8 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/categories/:id — Delete category
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /api/categories/:id — Delete category (admin only)
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await db.category.delete({ where: { id } });

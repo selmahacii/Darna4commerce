@@ -34,6 +34,7 @@ import ProductCard from '@/components/ecommerce/ProductCard';
 import CartDrawer from '@/components/ecommerce/CartDrawer';
 import ProductViewerFallback from '@/components/three/ProductViewerFallback';
 import { toast } from 'sonner';
+import { ScrollProgress, SectionReveal, AnimatedCounter, TextReveal, MagneticButton } from '@/components/ui/AnimatedElements';
 
 // Dynamic import for 3D viewer
 const ProductViewer3D = dynamic(() => import('@/components/three/ProductViewer3D'), {
@@ -43,6 +44,17 @@ const ProductViewer3D = dynamic(() => import('@/components/three/ProductViewer3D
       Chargement de la vue 3D...
     </div>
   ),
+});
+
+// Dynamic import for 3D Hero Scene
+const HeroScene3D = dynamic(() => import('@/components/three/HeroScene3D'), {
+  ssr: false,
+  loading: () => <div className="absolute inset-0 bg-charcoal" />,
+});
+
+// Dynamic import for floating particles
+const FloatingParticles = dynamic(() => import('@/components/ui/FloatingParticles'), {
+  ssr: false,
 });
 
 // =============================================
@@ -559,88 +571,111 @@ function HomeView() {
   return (
     <div className="min-h-screen">
       {/* ===== HERO ===== */}
-      <section className="relative overflow-hidden min-h-[85vh] flex items-center">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[url('/images/products/hero.png')] bg-cover bg-center" />
-          <div className="absolute inset-0 bg-gradient-to-r from-charcoal/80 via-charcoal/50 to-terracotta/30" />
-        </div>
-        {/* Decorative zellige overlay */}
-        <div className="absolute inset-0 opacity-5">
-          <ZelligePattern className="w-full h-full text-cream" />
-        </div>
+      <section className="relative overflow-hidden min-h-screen flex items-center bg-charcoal">
+        {/* 3D Interactive Background */}
+        <HeroScene3D />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-40">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: 'easeOut' }}
-            className="max-w-2xl"
-          >
-            {/* Arabic decorative element */}
+        {/* Animated scan line effect */}
+        <motion.div
+          className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent pointer-events-none z-10"
+          initial={{ top: '0%', opacity: 0 }}
+          animate={{ top: ['0%', '100%', '0%'], opacity: [0, 1, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+        />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-40 z-10">
+          <div className="max-w-2xl">
+            {/* Arabic decorative element with animated reveal */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              className="flex items-center gap-3 mb-6"
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ delay: 0.3, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="flex items-center gap-3 mb-8"
             >
-              <div className="h-px w-12 bg-gold/60" />
-              <span className="text-gold/80 text-sm tracking-[0.3em]">\u062f\u0627\u0631\u0646\u0627</span>
-              <div className="h-px w-12 bg-gold/60" />
+              <motion.div className="h-px bg-gradient-to-r from-gold/0 via-gold/60 to-gold/60" initial={{ width: 0 }} animate={{ width: 48 }} transition={{ delay: 0.5, duration: 0.6 }} />
+              <motion.span className="text-gold/80 text-sm tracking-[0.3em] font-light" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.5 }}>
+                دارنا
+              </motion.span>
+              <motion.div className="h-px bg-gradient-to-r from-gold/60 via-gold/60 to-gold/0" initial={{ width: 0 }} animate={{ width: 48 }} transition={{ delay: 0.5, duration: 0.6 }} />
             </motion.div>
 
-            <Badge className="mb-6 bg-terracotta/20 text-terracotta-light border-terracotta/30 backdrop-blur-sm px-4 py-1.5 rounded-full">
-              <Sparkles className="w-3 h-3 mr-1.5" />
-              Collection Artisanale 2025
-            </Badge>
+            {/* Animated badge */}
+            <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.7, duration: 0.5, type: 'spring' }}>
+              <Badge className="mb-8 bg-terracotta/20 text-terracotta-light border-terracotta/30 backdrop-blur-sm px-5 py-2 rounded-full text-sm">
+                <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>
+                  <Sparkles className="w-3.5 h-3.5 mr-2" />
+                </motion.span>
+                Collection Artisanale 2025
+              </Badge>
+            </motion.div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-cream leading-tight mb-6">
-              Bienvenue chez{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-terracotta-light via-gold to-terracotta-light">
+            {/* Main title with staggered reveal */}
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-cream leading-[1.1] mb-8">
+              <motion.span className="block" initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.8, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}>
+                Bienvenue chez
+              </motion.span>
+              <motion.span className="block text-transparent bg-clip-text bg-gradient-to-r from-terracotta-light via-gold to-terracotta-light" initial={{ opacity: 0, y: 50, filter: 'blur(10px)', scale: 0.8 }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)', scale: 1 }} transition={{ delay: 1.0, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}>
                 Darna
-              </span>
+              </motion.span>
             </h1>
 
-            <p className="text-lg md:text-xl text-cream/80 mb-4 max-w-lg leading-relaxed">
+            <motion.p className="text-lg md:text-xl text-cream/80 mb-6 max-w-lg leading-relaxed" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2, duration: 0.7 }}>
               D\u00e9couvrez l&apos;\u00e2me de l&apos;artisanat alg\u00e9rien \u2014 des pi\u00e8ces uniques fa\u00e7onn\u00e9es \u00e0 la main par nos artisans, avec tout l&apos;amour et le savoir-faire transmis de g\u00e9n\u00e9ration en g\u00e9n\u00e9ration.
-            </p>
+            </motion.p>
 
-            <p className="text-sm text-cream/50 italic mb-8">
+            <motion.p className="text-sm text-gold/50 italic mb-10 font-light" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}>
               &laquo; L&apos;artisanat alg\u00e9rien, fait avec le c\u0153ur &raquo;
-            </p>
+            </motion.p>
 
-            <div className="flex flex-wrap gap-4">
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-terracotta to-terracotta-dark hover:from-terracotta-dark hover:to-terracotta text-cream shadow-lg shadow-terracotta/25 px-8 h-12 text-base rounded-xl transition-all duration-300"
-                onClick={() => setView('catalog')}
-              >
+            <motion.div className="flex flex-wrap gap-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6, duration: 0.6 }}>
+              <Button size="lg" className="bg-gradient-to-r from-terracotta to-terracotta-dark hover:from-terracotta-dark hover:to-terracotta text-cream shadow-lg shadow-terracotta/25 px-8 h-13 text-base rounded-xl transition-all duration-300" onClick={() => setView('catalog')}>
                 D\u00e9couvrir la Boutique
-                <ChevronRight className="w-4 h-4 ml-1.5" />
+                <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                  <ChevronRight className="w-4 h-4 ml-1.5" />
+                </motion.span>
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-cream/25 text-cream hover:bg-cream/10 backdrop-blur-sm px-8 h-12 text-base rounded-xl transition-all duration-300"
-                onClick={() => {
-                  document.getElementById('story-section')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
+              <Button size="lg" variant="outline" className="border-cream/25 text-cream hover:bg-cream/10 backdrop-blur-sm px-8 h-13 text-base rounded-xl transition-all duration-300" onClick={() => { document.getElementById('story-section')?.scrollIntoView({ behavior: 'smooth' }); }}>
                 Notre Histoire
               </Button>
-            </div>
+            </motion.div>
+          </div>
+
+          {/* Floating stats on the right */}
+          <motion.div initial={{ opacity: 0, x: 80 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2, duration: 1, ease: [0.25, 0.46, 0.45, 0.94] }} className="absolute bottom-32 right-8 lg:right-16 hidden lg:flex flex-col gap-4">
+            {[
+              { value: 200, suffix: '+', label: 'Produits artisanaux' },
+              { value: 58, suffix: '', label: 'Wilayas livr\u00e9es' },
+              { value: 4.9, suffix: '/5', label: 'Note moyenne' },
+            ].map((stat, i) => (
+              <motion.div key={stat.label} className="text-right" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.2 + i * 0.15, duration: 0.5 }} whileHover={{ scale: 1.05, x: -5 }}>
+                <p className="text-2xl font-bold text-cream"><AnimatedCounter target={stat.value} suffix={stat.suffix} duration={2} /></p>
+                <p className="text-xs text-cream/50">{stat.label}</p>
+              </motion.div>
+            ))}
           </motion.div>
 
-          {/* Decorative corner */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 1 }}
-            className="absolute bottom-10 right-10 hidden lg:block"
-          >
-            <div className="w-32 h-32 border border-gold/20 rounded-full flex items-center justify-center">
-              <div className="w-20 h-20 border border-gold/15 rounded-full flex items-center justify-center">
-                <div className="w-8 h-8 rotate-45 border border-gold/25" />
+          {/* Animated rotating rings */}
+          <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 2, duration: 1.5, ease: 'easeOut' }} className="absolute top-1/2 right-8 lg:right-24 -translate-y-1/2 hidden xl:block">
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}>
+              <div className="w-48 h-48 border border-gold/10 rounded-full flex items-center justify-center">
+                <motion.div animate={{ rotate: -360 }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}>
+                  <div className="w-36 h-36 border border-gold/15 rounded-full flex items-center justify-center">
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}>
+                      <div className="w-24 h-24 border border-gold/20 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 rotate-45 bg-gold/15 border border-gold/25" />
+                      </div>
+                    </motion.div>
+                  </div>
+                </motion.div>
               </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Scroll indicator */}
+          <motion.div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.5, duration: 0.5 }}>
+            <span className="text-[10px] text-cream/30 uppercase tracking-widest">D\u00e9couvrir</span>
+            <div className="w-5 h-8 border border-cream/20 rounded-full flex justify-center pt-1.5">
+              <motion.div className="w-1 h-2 bg-cream/40 rounded-full" animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }} />
             </div>
           </motion.div>
         </div>
@@ -2532,15 +2567,17 @@ export default function Page() {
   };
 
   return (
-    <main className="min-h-screen bg-cream">
+    <main className="min-h-screen bg-cream relative">
+      <ScrollProgress />
+      <FloatingParticles />
       <DarnaNavbar />
       <AnimatePresence mode="wait">
         <motion.div
           key={view}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.98 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
           {renderView()}
         </motion.div>

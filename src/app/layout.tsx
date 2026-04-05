@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     description: "Des produits faits main par les meilleurs artisans d'Algérie",
     type: "website",
   },
+  icons: {
+    icon: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

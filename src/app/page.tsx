@@ -15,6 +15,7 @@ import {
   Instagram, Facebook, Mail, Phone, MapPin,
   CreditCard, Banknote, User, Map,
   Home, Calendar, ArrowUpRight, Percent,
+  LogOut, LogIn, ArrowRight,
   Wallet, Layers, Gem
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ import { safeJSONParse } from '@/lib/format';
 import AdminDashboard from '@/components/ecommerce/AdminDashboard';
 
 // Backend API helper — routes all calls to Node.js backend on port 3003
-const BACKEND_URL = 'http://localhost:3003';
+const BACKEND_URL = 'http://127.0.0.1:3003';
 const api = (path: string, options?: RequestInit) => {
   const token = useAppStore.getState().auth.token;
   return fetch(`${BACKEND_URL}${path}`, {
@@ -152,18 +153,35 @@ const WILAYAS = [
 // =============================================
 function DarnaLogo({ className = 'w-9 h-9' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 40 40" className={className} fill="none">
-      <rect x="2" y="2" width="36" height="36" rx="8" fill="url(#logoGrad)" />
-      <path d="M20 6L32 14L32 26L20 34L8 26L8 14Z" fill="none" stroke="#FAF7F0" strokeWidth="1.5" />
-      <path d="M20 11L27 15.5L27 24.5L20 29L13 24.5L13 15.5Z" fill="#FAF7F0" opacity="0.3" />
-      <path d="M20 15L24 17.5L24 22.5L20 25L16 22.5L16 17.5Z" fill="#C4A35A" />
-      <circle cx="20" cy="20" r="2.5" fill="#FAF7F0" />
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <defs>
-        <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
-          <stop stopColor="#C75B39" />
-          <stop offset="1" stopColor="#A04828" />
+        <linearGradient id="doorGrad" x1="0" y1="0" x2="0" y2="40">
+          <stop offset="0%" stopColor="#A66835" />
+          <stop offset="100%" stopColor="#7A4B24" />
         </linearGradient>
+        <linearGradient id="goldGrad" x1="0" y1="0" x2="40" y2="40">
+          <stop offset="0%" stopColor="#D4AF37" />
+          <stop offset="100%" stopColor="#B48E2E" />
+        </linearGradient>
+        <filter id="logoShadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" />
+          <feOffset dx="0" dy="0.5" result="offsetblur" />
+          <feComponentTransfer><feFuncA type="linear" slope="0.2" /></feComponentTransfer>
+          <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
+      
+      {/* Outer Arch Shape */}
+      <path d="M20 4 C14 4 8 10 8 18 L8 36 L12 36 L12 18 C12 14 16 12 20 12 C24 12 28 14 28 18 L28 36 L32 36 L32 18 C32 10 26 4 20 4 Z" fill="url(#doorGrad)" filter="url(#logoShadow)" />
+      
+      {/* Middle Arch Detail */}
+      <path d="M20 7 C15 7 11 11 11 18 L11 36 L13 36 L13 18 C13 15 16 13 20 13 C24 13 27 15 27 18 L27 36 L29 36 L29 18 C29 11 25 7 20 7 Z" fill="#E8C37C" />
+      
+      {/* Inner Decorative Door / Lattice Area */}
+      <path d="M20 10 C16 10 14 14 14 18 L14 36 L26 36 L26 18 C26 14 24 10 20 10 Z" fill="url(#goldGrad)" opacity="0.9" />
+      
+      {/* Keyhole Shape */}
+      <path d="M20 20 C18.895 20 18 20.895 18 22 C18 22.845 18.528 23.567 19.261 23.854 L18.5 27 L21.5 27 L20.739 23.854 C21.472 23.567 22 22.845 22 22 C22 20.895 21.105 20 20 20 Z" fill="white" />
     </svg>
   );
 }
@@ -617,6 +635,7 @@ function DarnaNavbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
       {/* Auth Dialog (Login / Register) */}
       <AuthDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </>
@@ -1083,8 +1102,6 @@ function HomeView() {
           </motion.div>
         </div>
       </section>
-
-      <DarnaFooter />
     </div>
   );
 }
@@ -1355,7 +1372,7 @@ function ProductDetailView() {
       try {
         const [prodRes, recRes] = await Promise.all([
           api(`/api/products/${selectedProductId}`).then(r => r.json()),
-          api(`/api/ai/recommendations?productId=${selectedProductId}`).then(r => r.json()),
+          api(`/api/smart/recommendations?productId=${selectedProductId}`).then(r => r.json()),
         ]);
         if (!cancelled) {
           setProduct(prodRes.product);

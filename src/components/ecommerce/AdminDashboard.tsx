@@ -27,7 +27,7 @@ import { safeJSONParse } from '@/lib/format';
 // =============================================
 // API HELPER
 // =============================================
-const BACKEND_URL = 'http://localhost:3003';
+const BACKEND_URL = 'http://127.0.0.1:3003';
 const api = (path: string, options?: RequestInit) => {
   const token = useAppStore.getState().auth.token;
   return fetch(`${BACKEND_URL}${path}`, {

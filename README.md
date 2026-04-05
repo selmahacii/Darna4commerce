@@ -1,11 +1,4 @@
-# Darna — Algerian Artisan E-Commerce Platform
-
-> A premium, full-stack e-commerce platform celebrating Algerian craftsmanship.
-> Built with Next.js 16, Node.js Express, Three.js & Prisma.
-
----
-
-## Architecture
+# Project Workflows
 
 ```mermaid
 graph TB
@@ -34,7 +27,7 @@ graph TB
         R5["/api/users — Manage + Points"]
         R6["/api/cart — Session/User"]
         R7["/api/reviews — CRUD"]
-        R8["/api/ai — Recommendations"]
+        R8["/api/smart — Recommendations"]
         R9["/api/analytics — KPIs"]
     end
 
@@ -53,10 +46,6 @@ graph TB
     R1 & R2 & R3B & R4 & R5 & R6 & R7 & R8 & R9 --> PR
     PR --> SQ
 ```
-
----
-
-## Database Schema
 
 ```mermaid
 erDiagram
@@ -199,10 +188,6 @@ erDiagram
     Badge ||--o{ UserBadge : "awarded to"
 ```
 
----
-
-## Data Flow — Authentication & Requests
-
 ```mermaid
 sequenceDiagram
     actor C as Client
@@ -234,10 +219,6 @@ sequenceDiagram
     G-->>F: JSON response
     F-->>C: Show confirmation
 ```
-
----
-
-## Roles & Permissions
 
 ```mermaid
 graph LR
@@ -271,257 +252,68 @@ graph LR
     Customer -->|"role=admin"| Admin
 ```
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 16 (App Router), React 19, TypeScript 5 |
-| 3D Engine | Three.js, @react-three/fiber, @react-three/drei |
-| UI | shadcn/ui (New York), Tailwind CSS 4, Radix UI |
-| Animations | Framer Motion 12 |
-| State | Zustand 5 (persisted to localStorage) |
-| Charts | Recharts 2 |
-| Backend | Node.js Express 5, TypeScript |
-| Runtime | Bun 1 |
-| Database | SQLite + Prisma ORM 6 |
-| Auth | JWT (jsonwebtoken) + bcryptjs |
-| Security | Helmet, CORS |
-| Proxy | Caddy |
-| Container | Docker (multi-stage), Docker Compose |
-
----
-
-## Getting Started Locally
-
-### Prerequisites
-
-- **[Bun](https://bun.sh/)** v1.0+ (install: `curl -fsSL https://bun.sh/install | bash`)
-- **[Docker](https://docs.docker.com/get-docker/)** + Docker Compose (optional, for migration)
-- **[Git](https://git-scm.com/)**
-
-### Step 1 — Clone the repository
-
-```bash
-git clone <your-repo-url> darna
-cd darna
-```
-
-### Step 2 — Install dependencies
-
-```bash
-# Frontend
-bun install
-
-# Backend
-cd mini-services/backend
-bun install
-cd ../..
-```
-
-### Step 3 — Initialize the database
-
-```bash
-# Push Prisma schema (creates tables)
-bun run db:push
-
-cd mini-services/backend
-bun run db:push
-
-# Seed demo data (8 products, 5 categories, 2 users, badges...)
-bun run seed
-
-cd ../..
-```
-
-### Step 4 — Start both servers
-
-You need **two terminals**:
-
-```bash
-# ─── Terminal 1: Backend API ───
-cd mini-services/backend
-bun run dev
-# → Running on http://localhost:3003
-```
-
-```bash
-# ─── Terminal 2: Next.js Frontend ───
-bun run dev
-# → Running on http://localhost:3000
-```
-
-### Step 5 — Open the app
-
-Go to **http://localhost:3000** in your browser.
-
-#### Demo Accounts
-
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | `admin@darna.dz` | `admin123` |
-| **Customer** | `amina@email.com` | `amina123` |
-
----
-
-## Migrating to Production with Docker
-
-### How It Works
-
 ```mermaid
 flowchart TD
-    A["docker compose up --build"] --> B["Stage 1: Install dependencies<br/>bun install --frozen-lockfile"]
-    B --> C["Stage 2: Build Next.js<br/>bun run build → standalone output"]
-    C --> D["Stage 3: Production image<br/>Non-root user, minimal layers"]
-    D --> E["Entry script runs:"]
-    E --> F["Generate Prisma clients<br/>(frontend + backend)"]
-    F --> G["Push DB schema<br/>(creates tables if missing)"]
-    G --> H{DB empty?}
-    H -->|Yes| I["Seed demo data"]
-    H -->|No| J["Skip seeding"]
-    I --> K["Start Backend :3003"]
+    A["Main Setup"] --> B["Dependencies<br/>bun install"]
+    B --> C["Build Frontend<br/>bun run build"]
+    C --> D["Production Output"]
+    D --> E["Service Entry:"]
+    E --> F["Prisma Client Generation"]
+    F --> G["Database Push"]
+    G --> H{Check Seed?}
+    H -->|Required| I["Seed Demo Data"]
+    H -->|No| J["Skip Seed"]
+    I --> K["Launch Backend"]
     J --> K
-    K --> L["Health check wait<br/>(up to 15s)"]
-    L --> M["Start Frontend :3000"]
-    M --> N["App live on port 3000"]
+    K --> L["Health Check"]
+    L --> M["Launch Frontend"]
 ```
-
-### Docker Build Details
 
 ```mermaid
 graph LR
-    subgraph Stage1["Stage 1 — deps"]
-        S1A["Copy package files"]
-        S1B["bun install --frozen-lockfile"]
+    subgraph Frontend["Frontend Structure"]
+        S1A["Source Code"]
+        S1B["Prisma Schema"]
     end
 
-    subgraph Stage2["Stage 2 — builder"]
-        S2A["Copy all source code"]
-        S2B["Generate Prisma client"]
-        S2C["bun run build<br/>→ .next/standalone/"]
+    subgraph Backend["Backend Structure"]
+        S2A["Source Code"]
+        S2B["Prisma Configuration"]
     end
 
-    subgraph Stage3["Stage 3 — runner"]
-        S3A["Non-root user (darna:1001)"]
-        S3B["Copy standalone build"]
-        S3C["Copy backend + Prisma"]
-        S3D["docker-entrypoint.sh"]
+    subgraph DB["Database Persistence"]
+        S3A["SQLite Volume"]
+        S3B["Prisma Persistence"]
     end
 
-    Stage1 --> Stage2 --> Stage3
+    Frontend --> Backend --> DB
 ```
-
-### Step 1 — Build and launch
-
-```bash
-docker compose up -d --build
-```
-
-This single command:
-- Builds the multi-stage Docker image
-- Creates a persistent volume for the SQLite database
-- Starts the container in detached mode
-- Exposes port **3000**
-
-### Step 2 — Verify it's running
-
-```bash
-# Check container status
-docker compose ps
-
-# View live logs
-docker compose logs -f
-```
-
-You should see:
-```
-🚀 Starting backend API server...
-   ✅ Backend is healthy (PID: ...)
-🚀 Starting Next.js frontend on port 3000...
-```
-
-### Step 3 — Access the app
-
-Open **http://localhost:3000** in your browser.
-
-### Step 4 — Configure for production
-
-Before going live, edit `docker-compose.yml`:
-
-```yaml
-environment:
-  - JWT_SECRET=your-strong-random-secret-here   # <-- CHANGE THIS
-  - JWT_EXPIRES_IN=7d
-  - NODE_ENV=production
-```
-
-Then restart:
-
-```bash
-docker compose up -d --build --force-recreate
-```
-
-### Useful Docker Commands
-
-| Command | Description |
-|---------|-------------|
-| `docker compose up -d --build` | Build & start |
-| `docker compose logs -f` | Follow logs |
-| `docker compose restart` | Restart container |
-| `docker compose down` | Stop container (data preserved) |
-| `docker compose down -v` | Stop + **delete database** |
-| `docker compose up -d --build --force-recreate` | Full rebuild |
-
-### Backing Up the Database
-
-The SQLite file lives inside the Docker volume at `/app/db/custom.db`.
-
-```bash
-# Copy database out of the container
-docker cp darna-ecommerce:/app/db/custom.db ./backup-$(date +%Y%m%d).db
-
-# Restore from backup
-docker cp ./backup-20250101.db darna-ecommerce:/app/db/custom.db
-docker compose restart
-```
-
----
-
-## Project Structure
 
 ```mermaid
 graph TD
-    ROOT["darna/"] --> SRC["src/"]
+    ROOT["Project Root/"] --> SRC["src/"]
     ROOT --> MS["mini-services/backend/"]
     ROOT --> DB["db/custom.db"]
-    ROOT --> DOCKER["Dockerfile"]
-    ROOT --> DC["docker-compose.yml"]
-    ROOT --> ENTRY["docker-entrypoint.sh"]
     ROOT --> PUB["public/"]
 
     SRC --> APP["app/page.tsx<br/>app/layout.tsx<br/>app/globals.css"]
     SRC --> COMP["components/"]
-    SRC --> STORES["stores/<br/>app-store.ts<br/>cart-store.ts<br/>wishlist-store.ts"]
-    SRC --> LIB["lib/format.ts<br/>lib/db.ts"]
+    SRC --> STORES["stores/"]
+    SRC --> LIB["lib/"]
 
-    COMP --> ECOM["ecommerce/<br/>Navbar.tsx<br/>ProductCard.tsx<br/>CartDrawer.tsx<br/>AdminDashboard.tsx"]
-    COMP --> THREE["three/<br/>HeroScene3D.tsx<br/>ProductViewer3D.tsx"]
-    COMP --> UI["ui/ (40+ shadcn components)"]
+    COMP --> ECOM["ecommerce/"]
+    COMP --> THREE["three/"]
+    COMP --> UI["ui/"]
 
-    MS --> IDX["src/index.ts<br/>(Express entry)"]
-    MS --> ROUTES["src/routes/<br/>auth · products · categories<br/>orders · users · cart<br/>reviews · ai · analytics"]
-    MS --> MW["src/middleware/<br/>auth.ts · errorHandler.ts"]
-    MS --> PRISMA["prisma/<br/>schema.prisma<br/>seed.ts"]
+    MS --> IDX["src/index.ts"]
+    MS --> ROUTES["src/routes/"]
+    MS --> MW["src/middleware/"]
+    MS --> PRISMA["prisma/"]
 ```
-
----
-
-## API Endpoints Summary
 
 ```mermaid
 graph LR
-    subgraph Public["Public Endpoints"]
+    subgraph Public["API: Public"]
         PA["POST /api/auth/register"]
         PB["POST /api/auth/login"]
         PC["GET /api/products"]
@@ -531,7 +323,7 @@ graph LR
         PG["GET /api/health"]
     end
 
-    subgraph Auth["Authenticated (JWT)"]
+    subgraph Auth["API: Authenticated (JWT)"]
         AA["GET /api/auth/me"]
         AB["PUT /api/auth/change-password"]
         AC["POST /api/orders"]
@@ -541,7 +333,7 @@ graph LR
         AG["GET/PUT /api/users/:id (own)"]
     end
 
-    subgraph Admin["Admin Only (role=admin)"]
+    subgraph Admin["API: Admin Only"]
         AX["POST/PUT/DELETE /api/products"]
         AY["POST/PUT/DELETE /api/categories"]
         AZ["GET /api/orders"]
@@ -550,23 +342,9 @@ graph LR
         BC["DELETE /api/users/:id"]
         BD["POST /api/users/:id/points"]
         BE["GET /api/analytics/summary"]
-        BF["GET /api/ai/recommendations"]
+        BF["GET /api/smart/recommendations"]
     end
 
     Public -->|"Login"| Auth
     Auth -->|"role=admin"| Admin
 ```
-
----
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NODE_ENV` | `development` | `development` or `production` |
-| `DATABASE_URL` | `file:./db/custom.db` | Path to SQLite database |
-| `PORT` | `3003` | Backend API port |
-| `JWT_SECRET` | `darna-secret-key-2025` | **Must change in production** |
-| `JWT_EXPIRES_IN` | `7d` | Token expiration time |
-
----

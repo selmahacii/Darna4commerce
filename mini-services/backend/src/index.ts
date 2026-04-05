@@ -6,7 +6,7 @@ import productsRouter from './routes/products.js';
 import categoriesRouter from './routes/categories.js';
 import ordersRouter from './routes/orders.js';
 import usersRouter from './routes/users.js';
-import aiRouter from './routes/ai.js';
+import smartRouter from './routes/smart.js';
 import analyticsRouter from './routes/analytics.js';
 import reviewsRouter from './routes/reviews.js';
 import cartRouter from './routes/cart.js';
@@ -18,14 +18,18 @@ const PORT = parseInt(process.env.PORT || '3003', 10);
 // ═══════════════════════════════════════════════════════
 // MIDDLEWARE
 // ═══════════════════════════════════════════════════════
+app.use(cors({
+  origin: ['http://localhost:3010', 'http://127.0.0.1:3010', 'http://172.25.224.1:3010'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+}));
+// app.options('*', cors()); // Enable pre-flight for all routes
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
-app.use(cors({
-  origin: ['*'],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-Id'],
-  credentials: true,
+  crossOriginOpenerPolicy: { policy: 'unsafe-none' },
+  contentSecurityPolicy: false,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -62,7 +66,7 @@ app.get('/api', (_req, res) => {
       categories: '/api/categories',
       orders: '/api/orders',
       users: '/api/users',
-      ai: '/api/ai/recommendations (admin)',
+      smart: '/api/smart/recommendations',
       analytics: '/api/analytics/summary (admin)',
       reviews: '/api/reviews',
       cart: '/api/cart',
@@ -78,7 +82,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
-app.use('/api/ai', aiRouter);
+app.use('/api/smart', smartRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/cart', cartRouter);
@@ -104,7 +108,7 @@ process.on('unhandledRejection', (reason) => {
 // ═══════════════════════════════════════════════════════
 // START SERVER
 // ═══════════════════════════════════════════════════════
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, () => {
   console.log('');
   console.log('╔════════════════════════════════════════════════════════╗');
   console.log('║                                                        ║');

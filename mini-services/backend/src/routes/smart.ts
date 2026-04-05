@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
 import db from '../config/database.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { optionalAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/ai/recommendations — AI-driven product recommendations (admin only)
-router.get('/recommendations', requireAdmin, async (req: Request, res: Response) => {
+// GET /api/smart/recommendations — Smart product recommendations (public)
+router.get('/recommendations', optionalAuth, async (req: Request, res: Response) => {
   try {
     const { productId } = req.query;
 
@@ -25,7 +25,7 @@ router.get('/recommendations', requireAdmin, async (req: Request, res: Response)
       return;
     }
 
-    // AI-driven recommendation logic:
+    // Smart recommendation logic:
     // 1. Same category, high-rated products
     // 2. Similar price range, popular items
     // 3. Featured trending items
@@ -83,8 +83,8 @@ router.get('/recommendations', requireAdmin, async (req: Request, res: Response)
   }
 });
 
-// GET /api/ai/search — Smart product search (admin only)
-router.get('/search', requireAdmin, async (req: Request, res: Response) => {
+// GET /api/smart/search — Smart product search (public)
+router.get('/search', optionalAuth, async (req: Request, res: Response) => {
   try {
     const { q } = req.query;
 

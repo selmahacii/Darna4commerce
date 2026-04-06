@@ -7,7 +7,7 @@ import {
   Eye, Edit3, Trash2, Plus, Search, ChevronLeft, X,
   Star, CheckCircle2, Clock, Truck, XCircle, RefreshCw,
   UserPlus, Settings, Tag, Layers, ArrowUpRight, ArrowDownRight,
-  Filter, MoreHorizontal, AlertTriangle, Download
+  Filter, MoreHorizontal, AlertTriangle, Download, Ticket, Gift, Calendar, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,13 +21,17 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import {
+  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell, PieChart, Pie, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
+} from 'recharts';
 import { useAppStore } from '@/stores/app-store';
 import { safeJSONParse } from '@/lib/format';
 
 // =============================================
 // API HELPER
 // =============================================
-const BACKEND_URL = 'http://127.0.0.1:3003';
+const BACKEND_URL = 'http://localhost:3003';
 const api = (path: string, options?: RequestInit) => {
   const token = useAppStore.getState().auth.token;
   return fetch(`${BACKEND_URL}${path}`, {
@@ -90,14 +94,34 @@ interface StoreUser {
 }
 
 interface AnalyticsSummary {
-  totalRevenue: number;
-  totalOrders: number;
-  totalProducts: number;
-  totalUsers: number;
+  summary: {
+    totalRevenue: number;
+    totalOrders: number;
+    totalProducts: number;
+    totalUsers: number;
+    lowStockProducts: number;
+    pendingOrders: number;
+    avgRating: number;
+  };
   recentOrders: Order[];
   topProducts: { name: string; sales: number; revenue: number }[];
-  salesByCategory: { category: string; sales: number; revenue: number }[];
-  monthlyTrends: { month: string; orders: number; revenue: number }[];
+  salesByCategory: { name: string; sales: number }[];
+  monthlySales: { month: string; orders: number; sales: number }[];
+  visitorStats: { totalVisitors: number; uniqueVisitors: number; events: number };
+}
+
+interface Coupon {
+  id: string;
+  code: string;
+  description?: string;
+  discountType: string;
+  discountValue: number;
+  minOrderTotal: number;
+  usageLimit?: number;
+  usageCount: number;
+  isActive: boolean;
+  endDate?: string;
+  createdAt: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -108,7 +132,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   cancelled: { label: 'Annulé', color: 'bg-red-100 text-red-800 border-red-200', icon: XCircle },
 };
 
-const formatDA = (n: number) => n.toLocaleString('fr-DZ') + ' DA';
+const formatDA = (n: number) => (n || 0).toLocaleString('fr-DZ') + ' DA';
 const formatDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // =============================================
@@ -201,6 +225,7 @@ export default function AdminDashboard() {
               { value: 'orders', label: 'Commandes', icon: ShoppingBag },
               { value: 'users', label: 'Clients', icon: Users },
               { value: 'categories', label: 'Catégories', icon: Tag },
+              { value: 'coupons', label: 'Marketing', icon: Ticket },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -220,6 +245,7 @@ export default function AdminDashboard() {
               {activeTab === 'orders' && <OrdersTab />}
               {activeTab === 'users' && <UsersTab />}
               {activeTab === 'categories' && <CategoriesTab />}
+              {activeTab === 'coupons' && <CouponsTab />}
             </motion.div>
           </AnimatePresence>
         </Tabs>
@@ -248,10 +274,10 @@ function OverviewTab({ analytics, loading }: { analytics: AnalyticsSummary | nul
   }, []);
 
   const kpis = [
-    { label: 'Chiffre d\'affaires', value: analytics ? formatDA(analytics.totalRevenue) : '—', icon: DollarSign, color: 'text-green-600 bg-green-50', change: '+12.5%' },
-    { label: 'Commandes', value: analytics ? String(analytics.totalOrders) : '—', icon: ShoppingBag, color: 'text-blue-600 bg-blue-50', change: '+8.2%' },
-    { label: 'Produits', value: analytics ? String(analytics.totalProducts) : '—', icon: Package, color: 'text-purple-600 bg-purple-50', change: '+3' },
-    { label: 'Clients', value: analytics ? String(analytics.totalUsers) : '—', icon: Users, color: 'text-terracotta bg-terracotta/10', change: '+15.3%' },
+    { label: 'Chiffre d\'affaires', value: analytics ? formatDA(analytics.summary.totalRevenue) : '—', icon: DollarSign, color: 'text-green-600 bg-green-50', change: '+12.5%' },
+    { label: 'Commandes', value: analytics ? String(analytics.summary.totalOrders) : '—', icon: ShoppingBag, color: 'text-blue-600 bg-blue-50', change: '+8.2%' },
+    { label: 'Produits', value: analytics ? String(analytics.summary.totalProducts) : '—', icon: Package, color: 'text-purple-600 bg-purple-50', change: '+3' },
+    { label: 'Clients', value: analytics ? String(analytics.summary.totalUsers) : '—', icon: Users, color: 'text-terracotta bg-terracotta/10', change: '+15.3%' },
   ];
 
   return (
@@ -271,7 +297,7 @@ function OverviewTab({ analytics, loading }: { analytics: AnalyticsSummary | nul
                     {kpi.change}
                   </span>
                 </div>
-                <p className="text-2xl font-bold text-charcoal">{loading ? <Skeleton className="h-8 w-24" /> : kpi.value}</p>
+                <div className="text-2xl font-bold text-charcoal">{loading ? <Skeleton className="h-8 w-24" /> : kpi.value}</div>
                 <p className="text-xs text-charcoal/50 mt-1">{kpi.label}</p>
               </CardContent>
             </Card>
@@ -279,10 +305,139 @@ function OverviewTab({ analytics, loading }: { analytics: AnalyticsSummary | nul
         ))}
       </div>
 
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue Trend */}
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold">Tendance du Chiffre d'Affaires</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              {loading ? (
+                <Skeleton className="w-full h-full rounded-xl" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={analytics?.monthlyRevenue || []}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#A66835" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#A66835" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#777' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#777' }} tickFormatter={(v) => `${v/1000}k`} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                      formatter={(v) => [formatDA(Number(v)), 'Revenu']}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#A66835" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Categories Distribution */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold">Répartition par Catégorie</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <div className="h-[300px] w-full">
+               {loading ? (
+                 <Skeleton className="w-full h-full rounded-xl" />
+               ) : (
+                 <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={analytics?.salesByCategory || []} layout="vertical" margin={{ left: 40 }}>
+                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                     <XAxis type="number" hide />
+                     <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#777' }} width={80} />
+                     <Tooltip 
+                       cursor={{ fill: 'rgba(166, 104, 53, 0.05)' }}
+                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                     />
+                     <Bar dataKey="sales" radius={[0, 4, 4, 0]} barSize={20}>
+                       {analytics?.salesByCategory.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={['#A66835', '#D4AF37', '#556B2F', '#722F37', '#2F4F4F'][index % 5]} />
+                       ))}
+                     </Bar>
+                   </BarChart>
+                 </ResponsiveContainer>
+               )}
+             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Products + Low Stock */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Products Table */}
+        <Card className="border-0 shadow-sm">
+           <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Produits les plus vendus</CardTitle>
+                <TrendingUp className="w-4 h-4 text-terracotta" />
+              </div>
+           </CardHeader>
+           <CardContent>
+              <div className="space-y-4">
+                 {(analytics?.topProducts || []).slice(0, 5).map((prod, i) => (
+                   <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-sand/20 transition-colors">
+                      <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-lg bg-sand flex items-center justify-center font-bold text-terracotta text-sm">#{i+1}</div>
+                         <div>
+                            <p className="text-sm font-medium text-charcoal">{prod.name}</p>
+                            <p className="text-[10px] text-charcoal/40 uppercase tracking-widest">{prod.sales} Ventes</p>
+                         </div>
+                      </div>
+                      <div className="text-right">
+                         <p className="text-sm font-bold text-charcoal">{formatDA(prod.revenue)}</p>
+                         <p className="text-[10px] text-green-600 font-medium">+15% ce mois</p>
+                      </div>
+                   </div>
+                 ))}
+                 {(!analytics?.topProducts || analytics.topProducts.length === 0) && (
+                   <p className="text-center py-4 text-charcoal/30 text-sm">Pas encore de données de vente</p>
+                 )}
+              </div>
+           </CardContent>
+        </Card>
+
+        {/* Low Stock Alerts */}
+        <Card className="border-0 shadow-sm">
+           <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Alertes de Stock</CardTitle>
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+              </div>
+           </CardHeader>
+           <CardContent>
+              <div className="space-y-3">
+                 {[
+                   { name: 'Babouches Artisanales', stock: 3, id: '1' },
+                   { name: 'Fibule Kabyle Argent', stock: 2, id: '2' },
+                   { name: 'Chaise Touareg', stock: 5, id: '3' },
+                 ].map((item) => (
+                   <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100">
+                      <div>
+                         <p className="text-sm font-semibold text-amber-900">{item.name}</p>
+                         <p className="text-xs text-amber-700">Stock critique : {item.stock} restants</p>
+                      </div>
+                      <Button size="sm" variant="outline" className="h-8 rounded-lg bg-white border-amber-200 text-amber-900 hover:bg-amber-100">Réapprovisionner</Button>
+                   </div>
+                 ))}
+              </div>
+           </CardContent>
+        </Card>
+      </div>
+
       {/* Recent Orders + Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Orders */}
-        <Card className="border-0 shadow-sm lg:col-span-2">
+        <Card className="border-0 shadow-sm lg:col-span-3">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">Commandes Récentes</CardTitle>
@@ -290,28 +445,32 @@ function OverviewTab({ analytics, loading }: { analytics: AnalyticsSummary | nul
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 max-h-80 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
               {orders.length === 0 ? (
-                <p className="text-sm text-charcoal/40 text-center py-8">Aucune commande pour le moment</p>
-              ) : orders.slice(0, 8).map((order) => {
+                <p className="text-sm text-charcoal/40 text-center py-8 col-span-2">Aucune commande pour le moment</p>
+              ) : orders.slice(0, 12).map((order) => {
                 const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
                 const StatusIcon = statusCfg.icon;
                 return (
-                  <div key={order.id} className="flex items-center justify-between p-3 rounded-xl bg-sand/40 hover:bg-sand/60 transition-colors">
+                  <div key={order.id} className="flex items-center justify-between p-4 rounded-xl bg-sand/30 hover:bg-white hover:shadow-sm border border-transparent hover:border-terracotta/10 transition-all">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-                        <ShoppingBag className="w-4 h-4 text-charcoal/40" />
+                      <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center flex-shrink-0">
+                        <User className="w-4.5 h-4.5 text-terracotta/40" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-charcoal truncate">
-                          {order.user?.name || 'Client'} — {order.city}
+                        <p className="text-sm font-bold text-charcoal truncate">
+                          {order.user?.name || 'Client Inconnu'}
                         </p>
-                        <p className="text-xs text-charcoal/40">{formatDate(order.createdAt)}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                           <span className="text-[10px] text-charcoal/40 uppercase tracking-wider">{order.city}</span>
+                           <span className="w-1 h-1 rounded-full bg-charcoal/10" />
+                           <p className="text-xs text-charcoal/40">{formatDate(order.createdAt)}</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                      <span className="text-sm font-semibold text-charcoal">{formatDA(order.total)}</span>
-                      <Badge className={`${statusCfg.color} text-[10px] px-2 py-0.5 border`}>
+                    <div className="flex flex-col items-end gap-1.5 ml-3">
+                      <span className="text-sm font-bold text-charcoal">{formatDA(order.total)}</span>
+                      <Badge className={`${statusCfg.color} text-[10px] px-2 py-0 border-0 font-medium`}>
                         <StatusIcon className="w-2.5 h-2.5 mr-1" />
                         {statusCfg.label}
                       </Badge>
@@ -320,26 +479,6 @@ function OverviewTab({ analytics, loading }: { analytics: AnalyticsSummary | nul
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Répartition</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {analytics?.salesByCategory?.slice(0, 5).map((cat) => (
-              <div key={cat.category}>
-                <div className="flex items-center justify-between text-sm mb-1.5">
-                  <span className="text-charcoal/70">{cat.category || 'Autre'}</span>
-                  <span className="font-medium text-charcoal">{cat.sales} ventes</span>
-                </div>
-                <Progress value={Math.min((cat.sales / (analytics?.totalOrders || 1)) * 100, 100)} className="h-2 bg-sand" />
-              </div>
-            )) || (
-              <p className="text-sm text-charcoal/40 text-center py-4">Chargement...</p>
-            )}
           </CardContent>
         </Card>
       </div>
@@ -998,6 +1137,210 @@ function CategoryFormDialog({ category, open, onClose, onSave }: {
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl">Annuler</Button>
             <Button type="submit" disabled={saving} className="flex-1 bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
               {saving ? 'Sauvegarde...' : category ? 'Mettre à jour' : 'Créer'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// =============================================
+// COUPONS TAB (MARKETING)
+// =============================================
+function CouponsTab() {
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const loadCoupons = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api('/api/coupons');
+      if (res.ok) setCoupons(await res.json());
+    } catch { toast.error('Erreur de chargement'); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadCoupons(); }, [loadCoupons]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Supprimer ce coupon ?')) return;
+    try {
+      const res = await api(`/api/coupons/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Coupon supprimé');
+        loadCoupons();
+      }
+    } catch { toast.error('Erreur serveur'); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-charcoal">Coupons & Promotions</h3>
+          <p className="text-sm text-charcoal/50">Gérez vos codes de réduction et offres spéciales</p>
+        </div>
+        <Button onClick={() => setShowCreate(true)} className="bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
+          <Plus className="w-4 h-4 mr-1.5" />
+          Nouveau coupon
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-xl" />)}
+        </div>
+      ) : coupons.length === 0 ? (
+        <Card className="border-0 shadow-sm"><CardContent className="p-12 text-center text-charcoal/40"><Gift className="w-12 h-12 mx-auto mb-3 opacity-20" /><p>Aucun coupon actif</p></CardContent></Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {coupons.map((coupon) => (
+            <Card key={coupon.id} className="border-0 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-terracotta" />
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <Badge className="bg-terracotta/10 text-terracotta text-lg font-mono mb-1">{coupon.code}</Badge>
+                    <p className="text-xs text-charcoal/40">{coupon.description || 'Pas de description'}</p>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete(coupon.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-charcoal">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `${coupon.discountValue} DA`}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-charcoal/40">Remise</p>
+                  </div>
+                  <Separator orientation="vertical" className="h-8" />
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-charcoal">{coupon.usageCount}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-charcoal/40">Utilisations</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-sand">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-charcoal/50">Minimum d'achat</span>
+                    <span className="font-medium text-charcoal">{formatDA(coupon.minOrderTotal)}</span>
+                  </div>
+                  {coupon.endDate && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-charcoal/50">Expire le</span>
+                      <span className="font-medium text-charcoal">{formatDate(coupon.endDate)}</span>
+                    </div>
+                  )}
+                  {coupon.usageLimit && (
+                    <div className="mt-2">
+                       <div className="flex justify-between text-[10px] mb-1">
+                          <span className="text-charcoal/40">Limite d'utilisation</span>
+                          <span className="font-medium text-charcoal">{coupon.usageCount} / {coupon.usageLimit}</span>
+                       </div>
+                       <Progress value={(coupon.usageCount / coupon.usageLimit) * 100} className="h-1 bg-sand" />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <CouponFormDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onSave={() => { setShowCreate(false); loadCoupons(); }}
+      />
+    </div>
+  );
+}
+
+function CouponFormDialog({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: () => void }) {
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    const fd = new FormData(e.currentTarget);
+    const body = {
+      code: fd.get('code'),
+      discountType: fd.get('discountType'),
+      discountValue: fd.get('discountValue'),
+      description: fd.get('description'),
+      minOrderTotal: fd.get('minOrderTotal'),
+      usageLimit: fd.get('usageLimit'),
+      endDate: fd.get('endDate'),
+    };
+
+    try {
+      const res = await api('/api/coupons', { method: 'POST', body: JSON.stringify(body) });
+      if (res.ok) {
+        toast.success('Coupon créé avec succès');
+        onSave();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Erreur lors de la création');
+      }
+    } catch { toast.error('Erreur serveur'); }
+    setSaving(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md bg-white">
+        <DialogHeader>
+          <DialogTitle>Nouveau Coupon</DialogTitle>
+          <DialogDescription>Créez un code de réduction pour vos clients</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Code du coupon *</Label>
+            <Input name="code" placeholder="EX: HIVER2025" required className="rounded-xl font-mono uppercase" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Type de remise</Label>
+              <Select name="discountType" defaultValue="percentage">
+                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Pourcentage (%)</SelectItem>
+                  <SelectItem value="fixed">Montant Fixe (DA)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Valeur *</Label>
+              <Input name="discountValue" type="number" step="0.01" required placeholder="Ex: 20" className="rounded-xl" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Input name="description" placeholder="Ex: 20% de remise sur tout le site" className="rounded-xl" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Minimum d'achat (DA)</Label>
+              <Input name="minOrderTotal" type="number" defaultValue="0" className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Limite d'utilisations</Label>
+              <Input name="usageLimit" type="number" placeholder="Illimité" className="rounded-xl" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Date d'expiration</Label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
+              <Input name="endDate" type="date" className="pl-9 rounded-xl" />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl">Annuler</Button>
+            <Button type="submit" disabled={saving} className="flex-1 bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
+              {saving ? 'Création...' : 'Créer le coupon'}
             </Button>
           </div>
         </form>

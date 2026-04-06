@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Sparkles } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Sparkles, Truck as TruckIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore, type CartItem } from '@/stores/cart-store';
@@ -13,7 +13,7 @@ export default function CartDrawer() {
   const { currency, setView } = useAppStore();
 
   const subtotal = getTotal();
-  const shipping = subtotal > 5000 ? 0 : 500;
+  const shipping = subtotal >= 15000 ? 0 : 800;
   const total = subtotal + shipping;
 
   const handleCheckout = () => {
@@ -50,6 +50,25 @@ export default function CartDrawer() {
                 <X className="w-5 h-5" />
               </Button>
             </div>
+
+            {/* Free Shipping Progress */}
+            {items.length > 0 && (
+              <div className="px-6 py-4 bg-white border-b border-sand">
+                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider mb-2">
+                  <span className={subtotal >= 15000 ? 'text-olive' : 'text-charcoal/60'}>
+                    {subtotal >= 15000 ? 'Livraison Gratuite Débloquée !' : `Encore ${formatPrice(15000 - subtotal, currency)} pour la livraison gratuite`}
+                  </span>
+                  <TruckIcon className={`w-4 h-4 ${subtotal >= 15000 ? 'text-olive' : 'text-charcoal/20'}`} />
+                </div>
+                <div className="h-1.5 w-full bg-sand rounded-full overflow-hidden">
+                   <motion.div 
+                     initial={{ width: 0 }}
+                     animate={{ width: `${Math.min((subtotal / 15000) * 100, 100)}%` }}
+                     className={`h-full ${subtotal >= 15000 ? 'bg-olive' : 'bg-terracotta'}`}
+                   />
+                </div>
+              </div>
+            )}
 
             {/* Items */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">

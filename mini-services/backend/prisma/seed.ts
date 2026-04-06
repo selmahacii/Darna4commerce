@@ -16,6 +16,7 @@ async function seed() {
   await db.badge.deleteMany();
   await db.category.deleteMany();
   await db.user.deleteMany();
+  await db.coupon.deleteMany();
 
   // Categories
   const categories = await Promise.all([
@@ -24,6 +25,7 @@ async function seed() {
     db.category.create({ data: { name: 'Textiles', slug: 'textiles', description: "Couvertures berbères, tapis, coussins" } }),
     db.category.create({ data: { name: 'Cuisine', slug: 'cuisine', description: "Tagines, huile d'olive, épices" } }),
     db.category.create({ data: { name: 'Bijoux', slug: 'bijoux', description: "Bijoux amazighs, argent, fibule kabyle" } }),
+    db.category.create({ data: { name: 'Décoration', slug: 'decoration', description: "Vases, sculptures, objets d'art" } }),
   ]);
   console.log(`✅ Created ${categories.length} categories`);
 
@@ -50,6 +52,26 @@ async function seed() {
       tags: '["babouches","cuir","artisanal","alger","tradition"]',
     },
     {
+      name: 'Sac à Dos "Atlas" en Cuir',
+      slug: 'sac-a-dos-cuir-atlas',
+      description: "Inspiré par les sacs de voyage des caravanes du Sud, ce sac à dos en cuir de chameau est robuste et intemporel. Les fermoirs en laiton sont forgés à l'ancienne et le cuir développera une patine unique avec le temps.",
+      shortDesc: 'Sac à dos en cuir de chameau, tannage naturel',
+      price: 24500,
+      comparePrice: 32000,
+      categoryId: categories[0].id,
+      images: '["/images/products/backpack.png"]',
+      colors: '["#8B4513","#5D4037"]',
+      materials: '["Cuir de chameau","Laiton massif"]',
+      dimensions: '45 x 35 x 15 cm',
+      weight: 1.8,
+      stock: 12,
+      isFeatured: true,
+      isNew: false,
+      rating: 4.9,
+      reviewCount: 56,
+      tags: '["sac","cuir","voyage","atlas","artisanal"]',
+    },
+    {
       name: 'Lanterne en Laiton Forgé',
       slug: 'lanterne-laiton-forge',
       description: "Cette lanterne en laiton massif est réalisée par les maîtres forgerons de Tlemcen. Chaque ouverture est découpée à la main selon les motifs géométriques ancestraux de la région. Quand la bougie brille à l'intérieur, les ombres dansent sur vos murs comme à la veille d'une fête de mariage.",
@@ -68,6 +90,26 @@ async function seed() {
       rating: 4.8,
       reviewCount: 189,
       tags: '["lanterne","laiton","tlemcen","artisan","luminaires"]',
+    },
+    {
+      name: 'Lampe de Table "Béjaïa"',
+      slug: 'lampe-table-bejaia',
+      description: "Une pièce de design contemporain qui utilise les techniques de martelage kabyle. La lumière se diffuse à travers les micro-perforations pour créer une ambiance chaleureuse et feutrée.",
+      shortDesc: 'Lampe d\'ambiance en cuivre martelé',
+      price: 15800,
+      comparePrice: 21000,
+      categoryId: categories[1].id,
+      images: '["/images/products/lamp.png"]',
+      colors: '["#B87333","#C0C0C0"]',
+      materials: '["Cuivre","Socle en bois de cèdre"]',
+      dimensions: '20 x 20 x 35 cm',
+      weight: 1.4,
+      stock: 18,
+      isFeatured: false,
+      isNew: true,
+      rating: 4.7,
+      reviewCount: 42,
+      tags: '["lampe","cuivre","bejaia","design","artisanat"]',
     },
     {
       name: 'Couverture Berbère Tissage Main',
@@ -90,6 +132,26 @@ async function seed() {
       tags: '["couverture","berbere","kabylie","laine","tissage","amazigh"]',
     },
     {
+      name: 'Casque Audio "Melody de Ghardaïa"',
+      slug: 'casque-audio-ghardaia',
+      description: "Le mariage parfait de la technologie et de l'artisanat. Ce casque haut de gamme est habillé d'un cuir de chèvre tressé main par les artisanes du M'Zab. Qualité sonore cristalline et confort absolu.",
+      shortDesc: 'Casque audio premium avec finitions en cuir tressé',
+      price: 32000,
+      comparePrice: 45000,
+      categoryId: categories[0].id,
+      images: '["/images/products/headphones.png"]',
+      colors: '["#2d2d2d","#8B4513"]',
+      materials: '["Cuir de chèvre","Aluminium brossé","Mousse à mémoire"]',
+      dimensions: 'Standard',
+      weight: 0.32,
+      stock: 8,
+      isFeatured: true,
+      isNew: true,
+      rating: 4.9,
+      reviewCount: 24,
+      tags: '["audio","casque","cuir","ghardaia","luxe"]',
+    },
+    {
       name: 'Tagine en Céramique Peinte Main',
       slug: 'tagine-ceramique-peinte',
       description: "Notre tagine en céramique est décoré à la main avec les motifs floraux de Constantine. Le couvercle conique permet une cuisson lente et uniforme, comme le font nos grands-mères depuis des générations.",
@@ -108,6 +170,86 @@ async function seed() {
       rating: 4.7,
       reviewCount: 156,
       tags: '["tagine","céramique","constantine","cuisine","tradition"]',
+    },
+    {
+      name: 'Vase "Oasis de Biskra"',
+      slug: 'vase-oasis-biskra',
+      description: "Un vase en poterie traditionnelle de Biskra, vernissé de façon à rappeler les reflets du soleil sur le sable du Sahara. Parfait pour sublimer vos fleurs séchées ou comme objet décoratif central.",
+      shortDesc: 'Vase en poterie de Biskra, reflets sahariens',
+      price: 5400,
+      comparePrice: 7200,
+      categoryId: categories[5].id, // Décoration
+      images: '["/images/products/vase.png"]',
+      colors: '["#D2B48C","#F4A460"]',
+      materials: '["Argile rouge","Vernis naturel"]',
+      dimensions: '18 x 18 x 30 cm',
+      weight: 1.2,
+      stock: 45,
+      isFeatured: false,
+      isNew: true,
+      rating: 4.8,
+      reviewCount: 67,
+      tags: '["vase","poterie","biskra","decoration","oasis"]',
+    },
+    {
+      name: 'Chaise "Touareg" Design',
+      slug: 'chaise-touareg-design',
+      description: "Une réinterprétation moderne du trône traditionnel nomade. Structure en bois de cèdre de l'Atlas et assise en cuir tendu surpiqué de motifs tribaux.",
+      shortDesc: 'Chaise design en bois de cèdre et cuir Touareg',
+      price: 48000,
+      comparePrice: 65000,
+      categoryId: categories[5].id, // Décoration
+      images: '["/images/products/chair.png"]',
+      colors: '["#8B4513","#2d2d2d"]',
+      materials: '["Bois de cèdre","Cuir de bovin"]',
+      dimensions: '55 x 60 x 85 cm',
+      weight: 12.5,
+      stock: 6,
+      isFeatured: true,
+      isNew: true,
+      rating: 5.0,
+      reviewCount: 15,
+      tags: '["mobilier","chaise","touareg","luxe","cedre"]',
+    },
+    {
+      name: 'Enceinte Bluetooth Artisanal',
+      slug: 'enceinte-bluetooth-artisanal',
+      description: "L'acoustique parfaite du bois associée à un design inspiré des tambours bédouins. Cette enceinte offre un son puissant et chaleureux dans un écrin de bois noble gravé.",
+      shortDesc: 'Enceinte bluetooth en bois massif gravé',
+      price: 19500,
+      comparePrice: 28000,
+      categoryId: categories[0].id,
+      images: '["/images/products/speaker.png"]',
+      colors: '["#5D4037","#8B4513"]',
+      materials: '["Noyer sculpté","Composants audio HIFI"]',
+      dimensions: '15 x 15 x 20 cm',
+      weight: 1.1,
+      stock: 22,
+      isFeatured: false,
+      isNew: true,
+      rating: 4.8,
+      reviewCount: 38,
+      tags: '["audio","enceinte","bois","artisanal","musique"]',
+    },
+    {
+      name: 'Montre "Héritage Kabyle"',
+      slug: 'montre-heritage-kabyle',
+      description: "Une montre de luxe au cadran gravé de symboles Tifinagh. Le bracelet est réalisé en cuir de veau bleu de haute qualité, rappelant les cieux de la Kabylie.",
+      shortDesc: 'Montre de prestige, cadran gravé et bracelet cuir',
+      price: 36000,
+      comparePrice: 49000,
+      categoryId: categories[4].id, // Bijoux
+      images: '["/images/products/watch.png"]',
+      colors: '["#1E3A8A","#C0C0C0"]',
+      materials: '["Acier 316L","Mouvement automatique","Cuir premium"]',
+      dimensions: '42mm',
+      weight: 0.15,
+      stock: 5,
+      isFeatured: true,
+      isNew: true,
+      rating: 4.9,
+      reviewCount: 12,
+      tags: '["montre","luxe","kabyle","bijou","horlogerie"]',
     },
     {
       name: "Huile d'Olive Extra Vierge Bio",
@@ -230,76 +372,100 @@ async function seed() {
   });
   console.log('✅ Created admin user (admin@darna.dz / admin123)');
 
-  // Demo customer
-  await db.user.create({
-    data: {
-      email: 'amina@email.com',
-      name: 'Amina Benali',
-      role: 'customer',
-      password: customerPassword,
-      points: 3200,
-      level: 4,
-    },
-  });
-  console.log('✅ Created demo customer (amina@email.com / amina123)');
-
-  // Sample reviews
-  const sampleReviews = [
-    { productId: createdProducts[0].id, rating: 5, title: 'Magnifique!', comment: 'Qualité exceptionnelle, cousues avec amour.' },
-    { productId: createdProducts[1].id, rating: 5, title: 'Un chef-d\'œuvre', comment: 'La lanterne est encore plus belle en vrai.' },
-    { productId: createdProducts[5].id, rating: 5, title: 'Bijou sublime', comment: 'Ma femme l\'adore! Qualité argent 925 impeccable.' },
+  // Demo customers (Algerian names)
+  const customerNames = [
+    { name: 'Karim Mansouri', email: 'karim@email.com' },
+    { name: 'Zohra Dahmane', email: 'zohra@email.com' },
+    { name: 'Yacine Brahimi', email: 'yacine@email.com' },
+    { name: 'Lina Belkacem', email: 'lina@email.com' },
+    { name: 'Omar Khelifi', email: 'omar@email.com' },
   ];
 
-  const customer = await db.user.findFirst({ where: { role: 'customer' } });
-  for (const review of sampleReviews) {
-    if (customer) {
-      await db.review.create({
-        data: {
-          productId: review.productId,
-          userId: customer.id,
-          rating: review.rating,
-          title: review.title,
-          comment: review.comment,
-        },
-      });
-    }
+  const createdUsers = [];
+  for (const c of customerNames) {
+    const u = await db.user.create({
+      data: {
+        email: c.email,
+        name: c.name,
+        role: 'customer',
+        password: customerPassword,
+        points: Math.floor(Math.random() * 5000),
+        level: Math.floor(Math.random() * 5) + 1,
+      },
+    });
+    createdUsers.push(u);
   }
-  console.log(`✅ Created ${sampleReviews.length} sample reviews`);
+  console.log(`✅ Created ${createdUsers.length} Algerian customers`);
 
-  // Sample order
-  if (customer) {
+  // Coupons
+  const coupons = [
+    { code: 'DARNA20', discountType: 'percentage', discountValue: 20, description: '20% de remise sur votre commande', minOrderTotal: 5000, isActive: true },
+    { code: 'MARHBA', discountType: 'fixed', discountValue: 1000, description: '1000 DA offerts pour votre première commande', minOrderTotal: 3000, isActive: true },
+    { code: 'SUMMER25', discountType: 'percentage', discountValue: 15, description: 'Promotion été 2025', minOrderTotal: 8000, isActive: true, endDate: new Date('2025-08-31') },
+  ];
+
+  for (const coupon of coupons) {
+    await db.coupon.create({ data: coupon });
+  }
+  console.log(`✅ Created ${coupons.length} coupons`);
+
+  // Sample orders over last 6 months
+  const cities = ['Alger', 'Oran', 'Constantine', 'Annaba', 'Tlemcen', 'Sétif', 'Béjaïa'];
+  const statuses = ['pending', 'confirmed', 'shipped', 'delivered'];
+  let orderCount = 0;
+
+  for (let i = 0; i < 25; i++) {
+    const user = createdUsers[Math.floor(Math.random() * createdUsers.length)];
+    const city = cities[Math.floor(Math.random() * cities.length)];
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    
+    // Random date in last 6 months
+    const date = new Date();
+    date.setMonth(date.getMonth() - Math.floor(Math.random() * 6));
+    date.setDate(Math.floor(Math.random() * 28) + 1);
+
+    const subtotal = Math.floor(Math.random() * 15000) + 5000;
+    const tax = subtotal * 0.05;
+    const shipping = subtotal > 15000 ? 0 : 800;
+    const total = subtotal + tax + shipping;
+
     await db.order.create({
       data: {
-        userId: customer.id,
-        status: 'delivered',
-        total: 21000,
-        subtotal: 19500,
-        tax: 1500,
-        shipping: 0,
-        address: '12 Rue Didouche Mourad',
-        city: 'Alger',
+        userId: user.id,
+        status,
+        total,
+        subtotal,
+        tax,
+        shipping,
+        address: `${Math.floor(Math.random() * 50) + 1} Rue de la Liberté`,
+        city,
         country: 'Algérie',
         zipCode: '16000',
-        paymentMethod: 'credit_card',
+        paymentMethod: 'cash_on_delivery',
+        createdAt: date,
         items: {
           create: [
-            { productId: createdProducts[0].id, quantity: 1, price: 8500 },
-            { productId: createdProducts[4].id, quantity: 2, price: 4200 },
+            { 
+              productId: createdProducts[Math.floor(Math.random() * createdProducts.length)].id, 
+              quantity: Math.floor(Math.random() * 2) + 1, 
+              price: subtotal / 2 
+            }
           ],
         },
       },
     });
-    console.log('✅ Created sample order');
+    orderCount++;
   }
+  console.log(`✅ Generated ${orderCount} sample historical orders`);
 
   console.log('\n🎉 Seed complete — Darna is ready!');
   console.log(`   📦 ${products.length} products`);
   console.log(`   📂 ${categories.length} categories`);
-  console.log(`   👤 2 users (admin + customer) — passwords are hashed`);
-  console.log(`   🏅 ${badges.length} badges`);
+  console.log(`   👤 ${createdUsers.length + 2} users — passwords are hashed`);
   console.log(`   🔐 Demo credentials:`);
   console.log(`      Admin:  admin@darna.dz / admin123`);
   console.log(`      User:   amina@email.com / amina123`);
+  console.log(`      Others: [karim, zohra, yacine, lina, omar]@email.com / amina123`);
 }
 
 seed()

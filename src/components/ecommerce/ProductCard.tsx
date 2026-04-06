@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, type MouseEvent } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Heart, Eye, ShoppingBag } from 'lucide-react';
+import { Star, Heart, Eye, ShoppingBag, Sparkles, Truck as TruckIcon, Flame } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ interface Product {
   isFeatured: boolean;
   colors: string;
   materials: string;
+  stock: number;
   tags: string;
   category?: { name: string; slug: string };
 }
@@ -192,6 +193,28 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
                   </Badge>
                 </motion.div>
               )}
+              {product.rating >= 4.8 && (
+                <motion.div
+                  initial={{ scale: 0, x: -20 }}
+                  animate={{ scale: 1, x: 0 }}
+                  transition={{ delay: 0.5 + index * 0.05, type: 'spring' }}
+                >
+                  <Badge className="bg-gold text-charcoal border-none text-[10px] px-2.5 py-0.5 rounded-lg font-semibold shadow-md flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" /> Best Seller
+                  </Badge>
+                </motion.div>
+              )}
+              {product.price >= 15000 && (
+                <motion.div
+                  initial={{ scale: 0, x: -20 }}
+                  animate={{ scale: 1, x: 0 }}
+                  transition={{ delay: 0.6 + index * 0.05, type: 'spring' }}
+                >
+                  <Badge className="bg-blue-600/90 text-white border-none text-[9px] px-2.5 py-0.5 rounded-lg font-bold shadow-md flex items-center gap-1">
+                    <TruckIcon className="w-2.5 h-2.5" /> Livraison Offerte
+                  </Badge>
+                </motion.div>
+              )}
             </div>
 
             {/* Like — always visible on mobile, hover-reveal on desktop */}
@@ -211,6 +234,13 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
           </div>
 
           <CardContent className="p-5">
+            {/* Stock Alert */}
+            {product.stock <= 5 && product.stock > 0 && (
+              <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold text-terracotta-dark animate-pulse">
+                <Flame className="w-3 h-3" />
+                PLUS QUE {product.stock} RESTANTS
+              </div>
+            )}
             {/* Category */}
             {product.category && (
               <p className="text-[11px] uppercase tracking-wider text-[var(--color-gold)] font-semibold mb-1.5">

@@ -35,7 +35,7 @@ import { safeJSONParse } from '@/lib/format';
 import AdminDashboard from '@/components/ecommerce/AdminDashboard';
 
 // Backend API helper — routes all calls to Node.js backend on port 3003
-const BACKEND_URL = 'http://127.0.0.1:3003';
+const BACKEND_URL = 'http://localhost:3003';
 const api = (path: string, options?: RequestInit) => {
   const token = useAppStore.getState().auth.token;
   return fetch(`${BACKEND_URL}${path}`, {
@@ -54,22 +54,6 @@ import ProductViewerFallback from '@/components/three/ProductViewerFallback';
 import { toast } from 'sonner';
 import { UserPlus, Loader2 } from 'lucide-react';
 import { ScrollProgress, SectionReveal, AnimatedCounter, TextReveal, MagneticButton } from '@/components/ui/AnimatedElements';
-
-// Dynamic import for 3D viewer
-const ProductViewer3D = dynamic(() => import('@/components/three/ProductViewer3D'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[400px] md:h-[500px] w-full rounded-xl bg-charcoal/5 animate-pulse flex items-center justify-center text-muted-foreground text-sm">
-      Chargement de la vue 3D...
-    </div>
-  ),
-});
-
-// Dynamic import for 3D Hero Scene
-const HeroScene3D = dynamic(() => import('@/components/three/HeroScene3D'), {
-  ssr: false,
-  loading: () => <div className="absolute inset-0 bg-charcoal" />,
-});
 
 // Dynamic import for floating particles
 const FloatingParticles = dynamic(() => import('@/components/ui/FloatingParticles'), {
@@ -349,6 +333,7 @@ function DarnaNavbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { view, setView, isAdmin: isAdminFn, isAuthenticated: isAuthenticatedFn, setCurrency, currency, filters, setFilters, resetFilters, auth, login, register, logout } = useAppStore();
   const isAdmin = isAdminFn();
   const isLoggedIn = isAuthenticatedFn();
@@ -357,6 +342,7 @@ function DarnaNavbar() {
   const itemCount = getItemCount();
 
   useEffect(() => {
+    setMounted(true);
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -441,38 +427,42 @@ function DarnaNavbar() {
               ))}
 
               {/* Auth / Admin */}
-              {isLoggedIn && user?.role === 'admin' ? (
-                <button
-                  onClick={() => setView('admin')}
-                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  Tableau de bord
-                </button>
-              ) : isLoggedIn ? (
-                <button
-                  onClick={() => { setView('orders'); }}
-                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
-                >
-                  <Package className="w-4 h-4" />
-                  Mes Commandes
-                </button>
-              ) : (
-                <button
-                  onClick={() => setLoginOpen(true)}
-                  className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
-                >
-                  <User className="w-4 h-4" />
-                  Connexion
-                </button>
-              )}
-              {isLoggedIn && (
-                <button
-                  onClick={logout}
-                  className="px-3 py-2 rounded-xl text-sm text-charcoal/40 hover:text-terracotta hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+              {mounted && (
+                <>
+                  {isLoggedIn && user?.role === 'admin' ? (
+                    <button
+                      onClick={() => setView('admin')}
+                      className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      Tableau de bord
+                    </button>
+                  ) : isLoggedIn ? (
+                    <button
+                      onClick={() => { setView('orders'); }}
+                      className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                    >
+                      <Package className="w-4 h-4" />
+                      Mes Commandes
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setLoginOpen(true)}
+                      className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                    >
+                      <User className="w-4 h-4" />
+                      Connexion
+                    </button>
+                  )}
+                  {isLoggedIn && (
+                    <button
+                      onClick={logout}
+                      className="px-3 py-2 rounded-xl text-sm text-charcoal/40 hover:text-terracotta hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </>
               )}
             </nav>
 
@@ -642,6 +632,114 @@ function DarnaNavbar() {
   );
 }
 
+      {/* Newsletter Section */}
+      <section className="py-24 bg-sand/30 border-y border-sand overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-1/4 h-full bg-terracotta/5 blur-[100px] rounded-full translate-x-1/2" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-3xl mx-auto text-center">
+             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                <span className="inline-block text-[10px] font-bold uppercase tracking-[0.3em] text-terracotta mb-4 px-3 py-1 bg-terracotta/10 rounded-full">Exclusivité Darna</span>
+                <h2 className="text-3xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">Rejoignez le Cercle des Passionnés d'Artisanat</h2>
+                <p className="text-lg text-charcoal/50 mb-10 leading-relaxed">
+                  Soyez le premier au courant de nos nouvelles collections et recevez des histoires exclusives d'artisans alg&eacute;riens.
+                </p>
+                
+                <form className="flex flex-col sm:flex-row gap-2 max-w-lg mx-auto bg-white p-2 rounded-2xl shadow-xl shadow-charcoal/5 border border-sand">
+                   <Input 
+                     type="email"
+                     placeholder="Votre adresse email..." 
+                     className="bg-transparent border-none text-charcoal h-14 focus-visible:ring-0 px-4" 
+                   />
+                   <Button className="h-14 bg-terracotta hover:bg-terracotta-dark text-white rounded-xl px-8 font-bold transition-all hover:scale-[1.02]">
+                     S'abonner <Mail className="w-5 h-5 ml-2" />
+                   </Button>
+                </form>
+                <div className="mt-8 flex items-center justify-center gap-6">
+                   <div className="flex items-center gap-2 text-[10px] font-bold text-charcoal/30 uppercase tracking-widest">
+                      <Shield className="w-3.5 h-3.5" /> 100% S&eacute;curis&eacute;
+                   </div>
+                   <div className="flex items-center gap-2 text-[10px] font-bold text-charcoal/30 uppercase tracking-widest">
+                      <X className="w-3.5 h-3.5" /> Sans spam
+                   </div>
+                </div>
+             </motion.div>
+          </div>
+        </div>
+      </section>
+
+// =============================================
+// VIDEO SHOWCASE COMPONENT
+// =============================================
+function VideoShowcase() {
+  const targetRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start end", "end start"]
+  });
+
+  const scale = useTransform(scrollYProgress, [0, 0.5], [0.8, 1]);
+  const opacity = useTransform(scrollYProgress, [0, 0.3], [0, 1]);
+  const borderRadius = useTransform(scrollYProgress, [0, 0.5], [48, 0]);
+
+  return (
+    <section ref={targetRef} className="py-24 bg-cream relative overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+           <motion.span 
+             initial={{ opacity: 0, y: 10 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold mb-3 block"
+           >
+             H&eacute;ritage & Savoir-Faire
+           </motion.span>
+           <h2 className="text-4xl md:text-6xl font-bold text-charcoal">La Main de l&apos;Artiste</h2>
+        </div>
+
+        <motion.div 
+          style={{ scale, opacity, borderRadius }}
+          className="relative aspect-video w-full overflow-hidden shadow-2xl bg-charcoal"
+        >
+          <video 
+            autoPlay 
+            muted 
+            loop 
+            playsInline
+            poster="/images/showcase.png"
+            className="w-full h-full object-cover opacity-80"
+          >
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-pottery-maker-working-on-his-wheel-4198-large.mp4" type="video/mp4" />
+            Votre navigateur ne supporte pas la lecture de vid&eacute;os.
+          </video>
+          
+          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/80 via-transparent to-transparent flex flex-col justify-end p-8 md:p-16">
+             <motion.div
+               initial={{ opacity: 0, x: -20 }}
+               whileInView={{ opacity: 1, x: 0 }}
+               transition={{ delay: 0.5 }}
+             >
+                <h3 className="text-2xl md:text-4xl font-serif text-cream mb-4">L&apos;&acirc;me de l&apos;Alg&eacute;rie <br/>dans chaque d&eacute;tail.</h3>
+                <div className="flex items-center gap-6">
+                   <div className="h-px w-12 bg-gold" />
+                   <p className="text-sm text-cream/60 italic font-light">Chaque pi&egrave;ce est fa&ccedil;onn&eacute;e &agrave; la main, <br/>sans compromis, depuis des g&eacute;n&eacute;rations.</p>
+                </div>
+             </motion.div>
+          </div>
+
+          <motion.div 
+            animate={{ scale: [1, 1.1, 1] }} 
+            transition={{ duration: 4, repeat: Infinity }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 border border-white/20 rounded-full flex items-center justify-center backdrop-blur-sm pointer-events-none"
+          >
+            <div className="w-16 h-16 border rounded-full border-white/40 flex items-center justify-center">
+               <div className="w-0 h-0 border-l-[12px] border-l-white border-y-[8px] border-y-transparent ml-1" />
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 // =============================================
 // FOOTER
 // =============================================
@@ -771,8 +869,13 @@ function HomeView() {
     <div className="min-h-screen">
       {/* ===== HERO ===== */}
       <section className="relative overflow-hidden min-h-screen flex items-center bg-charcoal">
-        {/* 3D Interactive Background */}
-        <HeroScene3D />
+        {/* Premium Geometric Background */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-charcoal via-charcoal/95 to-charcoal" />
+          <div className="absolute top-1/4 -left-20 w-96 h-96 bg-terracotta/10 blur-[120px] rounded-full" />
+          <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-gold/10 blur-[120px] rounded-full" />
+        </div>
 
         {/* Animated scan line effect */}
         <motion.div
@@ -877,6 +980,38 @@ function HomeView() {
               <motion.div className="w-1 h-2 bg-cream/40 rounded-full" animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }} />
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Cinematic Video Showcase: L'ART DE DARNA */}
+      <VideoShowcase />
+
+      {/* Trust Markers Bar */}
+      <section className="py-16 bg-white border-b border-sand relative z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+              {[
+                { icon: Shield, title: 'Authenticité Garantie', desc: 'Produits 100% faits main en Algérie' },
+                { icon: Truck, title: 'Livraison 58 Wilayas', desc: 'Suivi de commande en temps réel' },
+                { icon: CreditCard, title: 'Paiement Sécurisé', desc: 'Cash ou Carte à la réception' },
+                { icon: RotateCcw, title: 'Satisfaction Client', desc: 'Retours faciles sous 7 jours' }
+              ].map((item, i) => (
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  viewport={{ once: true }}
+                  className="flex flex-col items-center lg:items-start text-center lg:text-left"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-sand flex items-center justify-center mb-4 shadow-sm">
+                    <item.icon className="w-6 h-6 text-terracotta" />
+                  </div>
+                  <h4 className="text-sm font-bold text-charcoal mb-1">{item.title}</h4>
+                  <p className="text-xs text-charcoal/40 leading-relaxed">{item.desc}</p>
+                </motion.div>
+              ))}
+           </div>
         </div>
       </section>
 
@@ -1358,7 +1493,7 @@ function ProductDetailView() {
   const [product, setProduct] = useState<Product | null>(null);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('3d');
+  const [activeTab, setActiveTab] = useState('photo');
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState('');
   const [engraving, setEngraving] = useState('');
@@ -1480,58 +1615,38 @@ function ProductDetailView() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* Left: 3D Viewer / Image */}
+          {/* Product Gallery */}
           <div className="space-y-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4 bg-sand rounded-xl">
-                <TabsTrigger value="3d" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
-                  <BoxSelect className="w-4 h-4 mr-1.5" /> Vue 3D
-                </TabsTrigger>
-                <TabsTrigger value="photo" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-terracotta data-[state=active]:shadow-sm">
-                  <Eye className="w-4 h-4 mr-1.5" /> Photos
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="3d">
-                <div className="relative rounded-2xl overflow-hidden">
-                  <ErrorBoundary
-                    fallback={
-                      <ProductViewerFallback productType={productType} color={selectedColor} material={selectedMaterial} engraving={engraving} />
-                    }
+            <div className="aspect-square rounded-2xl bg-sand overflow-hidden relative group">
+              {images[0] ? (
+                <motion.img 
+                  initial={{ scale: 1.1, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  src={images[0]} 
+                  alt={product.name} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-charcoal/30">
+                  Aucune image disponible
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-charcoal/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            {images.length > 1 && (
+              <div className="flex gap-3 mt-3 overflow-x-auto pb-2 scrollbar-none">
+                {images.map((img, i) => (
+                  <motion.div 
+                    key={i} 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-sand cursor-pointer ring-2 ring-terracotta/20 hover:ring-terracotta transition-all"
                   >
-                    <ProductViewer3D
-                      productName={product.name}
-                      productType={productType}
-                      color={selectedColor}
-                      material={selectedMaterial}
-                      engraving={engraving}
-                      className="h-[400px] md:h-[500px] w-full"
-                    />
-                  </ErrorBoundary>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="photo">
-                <div className="aspect-square rounded-2xl bg-sand overflow-hidden">
-                  {images[0] ? (
-                    <img src={images[0]} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-charcoal/30">
-                      Aucune image disponible
-                    </div>
-                  )}
-                </div>
-                {images.length > 1 && (
-                  <div className="flex gap-3 mt-3">
-                    {images.map((img, i) => (
-                      <div key={i} className="w-20 h-20 rounded-xl overflow-hidden bg-sand cursor-pointer ring-2 ring-terracotta/20 hover:ring-terracotta transition-all">
-                        <img src={img} alt="" className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right: Product Info */}
@@ -1564,21 +1679,56 @@ function ProductDetailView() {
 
             <Separator className="bg-terracotta/10" />
 
+            {/* Scarcity / Trust Markers */}
+            <div className="flex gap-4 p-4 rounded-2xl bg-terracotta/5 border border-terracotta/10">
+              <div className="w-10 h-10 rounded-full bg-terracotta/10 flex items-center justify-center flex-shrink-0">
+                <Flame className="w-5 h-5 text-terracotta" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-charcoal">Offre à durée limitée</p>
+                <p className="text-xs text-charcoal/60">3 personnes consultent ce produit en ce moment. Ne manquez pas votre chance !</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-sand/30 border border-sand">
+                <Shield className="w-4 h-4 text-olive" />
+                <span className="text-[10px] sm:text-xs font-medium text-charcoal">Artisanat Certifié</span>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-sand/30 border border-sand">
+                <TruckIcon className="w-4 h-4 text-terracotta" />
+                <span className="text-[10px] sm:text-xs font-medium text-charcoal">Livraison 58 Wilayas</span>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-sand/30 border border-sand">
+                <CreditCard className="w-4 h-4 text-blue-500" />
+                <span className="text-[10px] sm:text-xs font-medium text-charcoal">Paiement Sécurisé</span>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-sand/30 border border-sand">
+                <RotateCcw className="w-4 h-4 text-purple-500" />
+                <span className="text-[10px] sm:text-xs font-medium text-charcoal">Retours 7 jours</span>
+              </div>
+            </div>
+
             {/* Price */}
-            <div className="flex items-end gap-3">
-              <span className="text-3xl font-bold text-charcoal">{formatPrice(product.price, currency)}</span>
+            <div className="flex items-end gap-3 px-1">
+              <span className="text-4xl font-bold text-charcoal tracking-tight">{formatPrice(product.price, currency)}</span>
               {product.comparePrice && (
                 <>
-                  <span className="text-lg text-charcoal/40 line-through">{formatPrice(product.comparePrice, currency)}</span>
-                  <Badge className="bg-terracotta/10 text-terracotta border-terracotta/20 rounded-full">-{discount}%</Badge>
+                  <span className="text-xl text-charcoal/40 line-through mb-1">{formatPrice(product.comparePrice, currency)}</span>
+                  <Badge className="bg-terracotta text-white mb-2 rounded-lg font-bold shadow-sm">-{discount}%</Badge>
                 </>
               )}
             </div>
 
+            <Separator className="bg-terracotta/10" />
+
             {/* Description */}
-            <p className="text-sm text-charcoal/60 leading-relaxed">
-              {product.shortDesc || product.description.slice(0, 160) + '...'}
-            </p>
+            <div className="space-y-2">
+               <Label className="text-sm font-bold text-charcoal uppercase tracking-widest text-[10px]">Description</Label>
+               <p className="text-sm text-charcoal/70 leading-relaxed">
+                 {product.description}
+               </p>
+            </div>
 
             {/* Color Selection */}
             {colors.length > 0 && (
@@ -2400,7 +2550,23 @@ export default function Page() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-cream relative">
+    <main className="min-h-screen flex flex-col bg-cream relative overflow-x-hidden">
+      {/* Announcement Bar */}
+      <div className="bg-charcoal text-white py-2 px-4 shadow-sm relative z-50">
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-4 text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em]">
+          <motion.div
+             animate={{ opacity: [0.6, 1, 0.6] }}
+             transition={{ duration: 3, repeat: Infinity }}
+             className="flex items-center gap-4"
+          >
+            <span>Livraison gratuite sur Alger dès 15,000 DA</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-gold" />
+            <span className="text-gold">Code: MARHBA</span>
+            <span className="hidden sm:inline w-1.5 h-1.5 rounded-full bg-gold" />
+            <span className="hidden sm:inline">Nouveautés artisanales disponibles !</span>
+          </motion.div>
+        </div>
+      </div>
       <ScrollProgress />
       <FloatingParticles />
       <DarnaNavbar />

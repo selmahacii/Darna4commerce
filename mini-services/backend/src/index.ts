@@ -11,6 +11,7 @@ import analyticsRouter from './routes/analytics.js';
 import reviewsRouter from './routes/reviews.js';
 import cartRouter from './routes/cart.js';
 import authRouter from './routes/auth.js';
+import couponsRouter from './routes/coupons.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3003', 10);
@@ -108,7 +109,7 @@ process.on('unhandledRejection', (reason) => {
 // ═══════════════════════════════════════════════════════
 // START SERVER
 // ═══════════════════════════════════════════════════════
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('╔════════════════════════════════════════════════════════╗');
   console.log('║                                                        ║');
@@ -116,7 +117,7 @@ const server = app.listen(PORT, () => {
   console.log('║   Algerian Artisan E-Commerce                          ║');
   console.log('║   🔐 JWT Authentication Enabled                        ║');
   console.log('║                                                        ║');
-  console.log(`║   Running on: http://localhost:${PORT}                   ║`);
+  console.log(`║   Running on: http://0.0.0.0:${PORT}                   ║`);
   console.log('║   Environment:', process.env.NODE_ENV?.padEnd(36) + '║');
   console.log('║                                                        ║');
   console.log('║   Public Endpoints:                                    ║');

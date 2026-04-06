@@ -222,3 +222,111 @@ html {
 .pulse-glow {
   animation: pulse-glow 3s ease-in-out infinite;
 }
+
+/* =============================================
+   3D SCROLL ANIMATION SYSTEM — Jesko-inspired
+   ============================================= */
+
+/* Preserve 3D for nested transforms */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* GPU acceleration hint */
+.gpu-accelerated {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* Depth shadow system — layers get progressive shadows */
+.depth-shadow-1 {
+  box-shadow: 
+    0 2px 4px rgba(45, 42, 38, 0.04),
+    0 4px 8px rgba(45, 42, 38, 0.02);
+}
+
+.depth-shadow-2 {
+  box-shadow: 
+    0 4px 12px rgba(45, 42, 38, 0.06),
+    0 8px 24px rgba(45, 42, 38, 0.04),
+    0 1px 2px rgba(45, 42, 38, 0.08);
+}
+
+.depth-shadow-3 {
+  box-shadow: 
+    0 8px 30px rgba(45, 42, 38, 0.1),
+    0 16px 50px rgba(45, 42, 38, 0.06),
+    0 2px 4px rgba(45, 42, 38, 0.1);
+}
+
+/* Cinematic grain overlay */
+@keyframes grain-shift {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2%, -3%); }
+  20% { transform: translate(3%, 1%); }
+  30% { transform: translate(-1%, 2%); }
+  40% { transform: translate(2%, -2%); }
+  50% { transform: translate(-3%, 1%); }
+  60% { transform: translate(1%, 3%); }
+  70% { transform: translate(-2%, -1%); }
+  80% { transform: translate(3%, -3%); }
+  90% { transform: translate(-1%, 2%); }
+}
+
+.cinematic-grain::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+  animation: grain-shift 0.5s steps(4) infinite;
+}
+
+/* Smooth scroll snap for cinematic sections */
+.scroll-snap-container {
+  scroll-snap-type: y proximity;
+}
+
+.scroll-snap-section {
+  scroll-snap-align: start;
+}
+
+/* Glow pulse for scroll CTA */
+@keyframes depth-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(199, 91, 57, 0.3), 0 0 20px rgba(199, 91, 57, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(199, 91, 57, 0), 0 0 40px rgba(199, 91, 57, 0.2);
+  }
+}
+
+.depth-pulse {
+  animation: depth-pulse 2.5s ease-in-out infinite;
+}
+
+/* Horizontal reveal mask */
+@keyframes horizontal-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.horizontal-reveal {
+  animation: horizontal-reveal 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Scroll-driven line highlight */
+@keyframes line-extend {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.line-extend {
+  transform-origin: left;
+  animation: line-extend 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}

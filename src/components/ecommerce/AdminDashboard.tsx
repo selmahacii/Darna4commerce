@@ -51,12 +51,17 @@ interface Product {
   id: string;
   name: string;
   slug: string;
+  shortDesc?: string;
+  description?: string;
   price: number;
+  comparePrice?: number;
   stock: number;
   rating: number;
   reviewCount: number;
   isNew: boolean;
   isFeatured: boolean;
+  tags?: string;
+  categoryId?: string;
   category?: { id: string; name: string };
   images?: string;
   createdAt: string;
@@ -107,6 +112,7 @@ interface AnalyticsSummary {
   topProducts: { name: string; sales: number; revenue: number }[];
   salesByCategory: { name: string; sales: number }[];
   monthlySales: { month: string; orders: number; sales: number }[];
+  monthlyRevenue?: { month: string; revenue: number }[];
   visitorStats: { totalVisitors: number; uniqueVisitors: number; events: number };
 }
 
@@ -124,7 +130,7 @@ interface Coupon {
   createdAt: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType<any> }> = {
   pending: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock },
   confirmed: { label: 'Confirmé', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: CheckCircle2 },
   shipped: { label: 'Expédié', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Truck },

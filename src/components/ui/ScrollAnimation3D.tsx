@@ -33,6 +33,7 @@ export function Perspective3DSection({
   opacityRange = [0, 1, 0.3],
   translateYRange = [120, 0, -60],
   perspective = 1200,
+  offset = ['start end', 'end start'],
 }: {
   children: ReactNode;
   className?: string;
@@ -41,9 +42,10 @@ export function Perspective3DSection({
   opacityRange?: number[];
   translateYRange?: number[];
   perspective?: number;
+  offset?: [string, string];
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const progress = useScrollProgress(ref);
+  const progress = useScrollProgress(ref, offset);
 
   const rotateX = useTransform(progress, [0, 0.4, 1], rotateRange);
   const scale = useTransform(progress, [0, 0.4, 1], scaleRange);

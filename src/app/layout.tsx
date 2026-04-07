@@ -20,7 +20,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Darna for commerce — L'Artisanat Algérien, Fait avec le Cœur",
+  title: "Darna for commerce — L'Artisanat Algérien, Fait avec le Coeur",
   description: "Découvrez les plus beaux produits artisanaux d'Algérie. Cuir, textiles, bijoux, luminaires — chaque pièce raconte l'histoire de nos mains. Livraison partout en Algérie.",
   keywords: ["Darna", "artisanat", "Algérie", "artisanal", "cuir", "kabylie", "tlemcen", "amazigh", "babouches", "bijoux"],
   authors: [{ name: "Darna for commerce" }],
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     description: "Des produits faits main par les meilleurs artisans d'Algérie",
     type: "website",
   },
-  icons: {
+  icons: { 
     icon: '/logo.svg',
   },
 };

@@ -85,9 +85,10 @@ export function SectionReveal({ children, className = '', delay = 0 }: {
   );
 }
 
-export function MagneticButton({ children, className = '' }: {
+export function MagneticButton({ children, className = '', onClick }: {
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const x = useMotionValue(0);
@@ -114,6 +115,7 @@ export function MagneticButton({ children, className = '' }: {
     <motion.button
       ref={ref}
       className={className}
+      onClick={onClick}
       style={{ x: springX, y: springY }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}

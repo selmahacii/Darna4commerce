@@ -87,6 +87,7 @@ app.use('/api/smart', smartRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/cart', cartRouter);
+app.use('/api/coupons', couponsRouter);
 
 // ═══════════════════════════════════════════════════════
 // ERROR HANDLING

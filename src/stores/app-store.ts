@@ -68,7 +68,7 @@ const defaultFilters: FilterState = {
   category: 'all',
   minPrice: 0,
   maxPrice: 50000,
-  sortBy: 'newest',
+  sortBy: 'popular',
 };
 
 export const useAppStore = create<AppState>()(

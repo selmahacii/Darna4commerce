@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import {
   Search, SlidersHorizontal, ArrowUpDown, X,
@@ -16,7 +16,7 @@ import {
   CreditCard, Banknote, User, Map,
   Home, Calendar, ArrowUpRight, Percent,
   LogOut, LogIn, ArrowRight,
-  Wallet, Layers, Gem
+  Wallet, Layers, Gem, ScaleIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ import { safeJSONParse } from '@/lib/format';
 import AdminDashboard from '@/components/ecommerce/AdminDashboard';
 
 // Backend API helper — routes all calls to Node.js backend on port 3003
-const BACKEND_URL = 'http://localhost:3003';
+const BACKEND_URL = 'http://127.0.0.1:3003';
 const api = (path: string, options?: RequestInit) => {
   const token = useAppStore.getState().auth.token;
   return fetch(`${BACKEND_URL}${path}`, {
@@ -282,11 +282,11 @@ function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input name="email" type="email" placeholder="email@exemple.com" required className="rounded-xl" />
+              <Input name="email" type="email" placeholder="email@exemple.com" required autoComplete="email" className="rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label>Mot de passe</Label>
-              <Input name="password" type="password" placeholder="••••••" required className="rounded-xl" />
+              <Input name="password" type="password" placeholder="••••••" required autoComplete="current-password" className="rounded-xl" />
             </div>
             <div className="bg-sand/50 rounded-xl p-3 text-xs text-charcoal/60 space-y-1">
               <p className="font-semibold text-charcoal/80">Comptes de démonstration :</p>
@@ -312,11 +312,11 @@ function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
             </div>
             <div className="space-y-2">
               <Label>Email *</Label>
-              <Input name="email" type="email" placeholder="email@exemple.com" required className="rounded-xl" />
+              <Input name="email" type="email" placeholder="email@exemple.com" required autoComplete="email" className="rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label>Mot de passe *</Label>
-              <Input name="password" type="password" placeholder="Min. 6 caractères" required minLength={6} className="rounded-xl" />
+              <Input name="password" type="password" placeholder="Min. 6 caractères" required minLength={6} autoComplete="new-password" className="rounded-xl" />
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-terracotta hover:bg-terracotta-dark text-white rounded-xl">
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -374,9 +374,10 @@ function DarnaNavbar() {
   };
 
   const navLinks = [
+    { label: 'Accueil', view: 'home' as View, icon: Home },
     { label: 'Boutique', view: 'catalog' as View, icon: ShoppingBag },
     { label: 'Nouveautés', view: 'catalog' as View, filter: { sortBy: 'newest' as const }, icon: Sparkles },
-    { label: 'Fidélité', view: 'profile' as View, icon: Trophy },
+    ...(isAdmin ? [] : [{ label: 'Fidélité', view: 'profile' as View, icon: Trophy }]),
   ];
 
   return (
@@ -411,51 +412,102 @@ function DarnaNavbar() {
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={() => {
-                    if (link.view === 'catalog' && !link.filter) resetFilters();
-                    if (link.filter) setFilters(link.filter);
-                    setView(link.view);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                    view === link.view
-                      ? 'text-terracotta bg-terracotta/8 font-semibold'
-                      : 'text-charcoal/70 hover:text-terracotta hover:bg-terracotta/5'
-                  }`}
-                >
-                  {link.label}
-                  {view === link.view && (
-                    <motion.div
-                      className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-terracotta rounded-full"
-                      layoutId="darnaNav"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </button>
-              ))}
+              {mounted && navLinks.map((link) => {
+                const isActive = view === link.view && (
+                  (link.view === 'home') || 
+                  (link.view === 'catalog' && (
+                    (!link.filter && filters.sortBy === 'popular' && !filters.search) || 
+                    (link.filter && filters.sortBy === link.filter.sortBy)
+                  )) ||
+                  (link.view === 'profile')
+                );
+                return (
+                  <button
+                    key={link.label}
+                    onClick={() => {
+                      if (link.view === 'catalog' && !link.filter) resetFilters();
+                      if (link.filter) setFilters(link.filter);
+                      setView(link.view);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                      isActive
+                        ? 'text-terracotta bg-terracotta/8 font-semibold'
+                        : 'text-charcoal/70 hover:text-terracotta hover:bg-terracotta/5'
+                    }`}
+                  >
+                    {link.label}
+                    {isActive && (
+                      <motion.div
+                        className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-terracotta rounded-full"
+                        layoutId="darnaNav"
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
 
               {/* Auth / Admin */}
               {mounted && (
                 <>
                   {isLoggedIn && user?.role === 'admin' ? (
-                    <button
-                      onClick={() => setView('admin')}
-                      className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
-                    >
-                      <BarChart3 className="w-4 h-4" />
-                      Tableau de bord
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setView('admin')}
+                        className={`px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all group relative overflow-hidden ${
+                          view === 'admin' 
+                            ? 'bg-terracotta text-white shadow-lg shadow-terracotta/20' 
+                            : 'text-charcoal/70 hover:text-terracotta bg-terracotta/5 hover:bg-terracotta/10 border border-terracotta/10'
+                        }`}
+                      >
+                        <motion.div
+                          animate={{ 
+                            scale: view === 'admin' ? 1 : [1, 1.2, 1],
+                            rotate: view === 'admin' ? 0 : [0, 5, -5, 0]
+                          }}
+                          transition={{ repeat: Infinity, duration: 4, repeatDelay: 2 }}
+                        >
+                          <BarChart3 className={`w-4 h-4 ${view === 'admin' ? 'text-white' : 'text-terracotta'}`} />
+                        </motion.div>
+                        <span className="font-semibold">Tableau de bord</span>
+                        {view !== 'admin' && (
+                          <motion.div 
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer"
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '100%' }}
+                            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
+                          />
+                        )}
+                      </button>
+                      <Separator orientation="vertical" className="h-4 bg-terracotta/10 mx-1" />
+                      <button
+                        onClick={() => logout()}
+                        className="px-2 py-2 rounded-xl text-charcoal/40 hover:text-red-500 hover:bg-red-50 transition-all"
+                        title="Déconnexion"
+                      >
+                        <LogOut className="w-4.5 h-4.5" />
+                      </button>
+                    </div>
                   ) : isLoggedIn ? (
-                    <button
-                      onClick={() => { setView('orders'); }}
-                      className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
-                    >
-                      <Package className="w-4 h-4" />
-                      Mes Commandes
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setView('orders'); }}
+                        className="px-3 py-2 rounded-xl text-sm text-charcoal/60 hover:text-charcoal hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
+                      >
+                        <Package className="w-4 h-4" />
+                        Mes Commandes
+                      </button>
+                      <Separator orientation="vertical" className="h-4 bg-terracotta/10 mx-1" />
+                      <button
+                        onClick={() => logout()}
+                        className="px-3 py-2 rounded-xl text-sm text-red-600/60 hover:text-red-600 hover:bg-red-50 flex items-center gap-1.5 transition-all"
+                        title="Déconnexion"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span className="hidden lg:inline">Déconnexion</span>
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => setLoginOpen(true)}
@@ -463,14 +515,6 @@ function DarnaNavbar() {
                     >
                       <User className="w-4 h-4" />
                       Connexion
-                    </button>
-                  )}
-                  {isLoggedIn && (
-                    <button
-                      onClick={logout}
-                      className="px-3 py-2 rounded-xl text-sm text-charcoal/40 hover:text-terracotta hover:bg-terracotta/5 flex items-center gap-1.5 transition-all"
-                    >
-                      <X className="w-3 h-3" />
                     </button>
                   )}
                 </>
@@ -567,24 +611,34 @@ function DarnaNavbar() {
             className="fixed top-16 left-0 right-0 z-40 bg-cream/95 backdrop-blur-xl border-b border-terracotta/10 md:hidden"
           >
             <div className="p-4 space-y-1">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={() => {
-                    if (link.view === 'catalog' && !link.filter) resetFilters();
-                    if (link.filter) setFilters(link.filter as any);
-                    setView(link.view);
-                    setIsMobileOpen(false);
-                  }}
-                  className={`w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 transition-colors ${
-                    view === link.view
-                      ? 'text-terracotta bg-terracotta/8'
-                      : 'text-charcoal/70 hover:bg-sand'
-                  }`}
-                >
-                  {link.label}
-                </button>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = view === link.view && (
+                  (link.view === 'home') || 
+                  (link.view === 'catalog' && (
+                    (!link.filter && filters.sortBy === 'popular' && !filters.search) || 
+                    (link.filter && filters.sortBy === link.filter.sortBy)
+                  )) ||
+                  (link.view === 'profile')
+                );
+                return (
+                  <button
+                    key={link.label}
+                    onClick={() => {
+                      if (link.view === 'catalog' && !link.filter) resetFilters();
+                      if (link.filter) setFilters(link.filter as any);
+                      setView(link.view);
+                      setIsMobileOpen(false);
+                    }}
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium text-left flex items-center gap-3 transition-colors ${
+                      isActive
+                        ? 'text-terracotta bg-terracotta/8 font-semibold'
+                        : 'text-charcoal/70 hover:bg-sand'
+                    }`}
+                  >
+                    {link.label}
+                  </button>
+                );
+              })}
               <Separator className="my-2 bg-terracotta/10" />
               {isLoggedIn ? (
                 <>
@@ -644,197 +698,6 @@ function DarnaNavbar() {
 }
 
 // =============================================
-// VIDEO SHOWCASE COMPONENT
-// =============================================
-function VideoShowcase() {
-  const [mounted, setMounted] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start end', 'end start'],
-  });
-
-  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.85, 1.05, 0.9]);
-  const videoOpacity = useTransform(scrollYProgress, [0, 0.35, 0.65, 1], [0, 1, 1, 0.4]);
-  const borderRad = useTransform(scrollYProgress, [0, 0.5, 1], [48, 0, 48]);
-
-  const smoothScale = useSpring(scale, { stiffness: 45, damping: 15 });
-  const smoothBorderRad = useSpring(borderRad, { stiffness: 45, damping: 15 });
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  return (
-    <section
-      ref={ref}
-      id="video-showcase-section"
-      className="py-28 lg:py-48 bg-cream relative overflow-hidden"
-    >
-      {/* Organic background texture — faint linen feel */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-sand to-transparent" />
-        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-sand to-transparent" />
-        {/* Floating dust particles */}
-        {mounted && [
-          { top: '15%', left: '8%', size: 4, delay: 0 },
-          { top: '65%', left: '5%', size: 2.5, delay: 0.8 },
-          { top: '35%', right: '6%', size: 3, delay: 0.4 },
-          { top: '80%', right: '9%', size: 2, delay: 1.2 },
-        ].map((p, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-terracotta/20"
-            style={{ top: p.top, left: p.left, right: (p as any).right, width: p.size, height: p.size }}
-            animate={{ y: [-8, 8, -8], opacity: [0.2, 0.5, 0.2] }}
-            transition={{ duration: 4 + i, repeat: Infinity, delay: p.delay, ease: 'easeInOut' }}
-          />
-        ))}
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-
-        {/* ─── Editorial Header ─── */}
-        <div className="grid md:grid-cols-2 gap-10 items-end mb-16">
-          <div>
-            <motion.div
-              initial={{ opacity: 0, x: -24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-              viewport={{ once: true }}
-              className="flex items-center gap-3 mb-5"
-            >
-              <div className="h-px w-10 bg-terracotta" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.45em] text-terracotta">
-                Héritage &amp; Immersion
-              </span>
-            </motion.div>
-
-            <motion.h2
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-              viewport={{ once: true }}
-              className="text-4xl md:text-5xl lg:text-7xl font-serif font-bold text-charcoal leading-[1.05]"
-            >
-              La Main<br />
-              <span className="italic text-terracotta">de l&apos;Artiste</span>
-            </motion.h2>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.25 }}
-            viewport={{ once: true }}
-            className="flex flex-col gap-4"
-          >
-            <p className="text-base text-charcoal/60 leading-[1.8] max-w-sm">
-              Plongez au c&oelig;ur de nos ateliers. Observez la terre prendre forme, le cuir s&apos;assouplir et la magie op&eacute;rer sous les doigts de nos ma&icirc;tres artisans.
-            </p>
-            {/* Handwritten-feel stats */}
-            <div className="flex gap-8">
-              {[
-                { value: '100%', label: 'Fait Main' },
-                { value: '0', label: 'Machine' },
-                { value: '58', label: 'Wilayas' },
-              ].map((s, i) => (
-                <motion.div
-                  key={s.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 + i * 0.1 }}
-                  viewport={{ once: true }}
-                >
-                  <p className="text-2xl font-serif font-bold text-charcoal">{s.value}</p>
-                  <p className="text-[10px] uppercase tracking-widest text-charcoal/40 font-semibold mt-0.5">{s.label}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* ─── Cinematic Video Block ─── */}
-        <motion.div
-          style={{
-            scale: smoothScale,
-            borderRadius: smoothBorderRad,
-            opacity: videoOpacity,
-            willChange: 'transform, border-radius, opacity',
-          }}
-          className="relative aspect-[16/9] md:aspect-[21/9] w-full overflow-hidden bg-charcoal shadow-2xl"
-        >
-          {/* Poster fallback */}
-          <img
-            src="/images/showcase.png"
-            alt="Artisan Darna"
-            className="absolute inset-0 w-full h-full object-cover opacity-60"
-          />
-
-          {/* YouTube iframe */}
-          <div className="absolute inset-0 w-[160%] h-[160%] -top-[30%] -left-[30%] pointer-events-none">
-            <iframe
-              src="https://www.youtube.com/embed/S2oY3J5R-4E?autoplay=1&mute=1&loop=1&playlist=S2oY3J5R-4E&controls=0&disablekb=1&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3"
-              className="w-full h-full"
-              frameBorder="0"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            />
-          </div>
-
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/30 to-transparent" />
-
-          {/* Bottom caption */}
-          <div className="absolute bottom-0 left-0 right-0 p-8 md:p-14 flex flex-col md:flex-row items-end justify-between gap-6">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.7 }}
-              viewport={{ once: true }}
-            >
-              <h3 className="text-3xl md:text-4xl font-serif italic text-white mb-3 drop-shadow-md">
-                L&apos;&acirc;me de l&apos;Alg&eacute;rie.
-              </h3>
-              <div className="flex items-center gap-3">
-                <span className="relative flex w-2.5 h-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-terracotta opacity-75" />
-                  <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-terracotta" />
-                </span>
-                <p className="text-xs tracking-[0.2em] uppercase text-white/70 font-bold">
-                  En direct — Ateliers de Constantine
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.6 }}
-              viewport={{ once: true }}
-              className="hidden md:grid grid-cols-2 gap-3"
-            >
-              {[
-                { v: '15+', l: 'Artisans' },
-                { v: '3 gen.', l: 'Tradition' },
-              ].map((s) => (
-                <div
-                  key={s.l}
-                  className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 text-center"
-                >
-                  <p className="text-xl font-bold text-white font-serif">{s.v}</p>
-                  <p className="text-[9px] uppercase text-white/50 tracking-[0.2em] mt-0.5 font-bold">{s.l}</p>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// =============================================
 // FOOTER
 // =============================================
 function DarnaFooter() {
@@ -870,9 +733,9 @@ function DarnaFooter() {
             </div>
           </div>
 
-          {/* La Boutique */}
+          {/* Artisanat d'Algérie */}
           <div>
-            <h4 className="text-cream font-semibold mb-4 text-sm">La Boutique</h4>
+            <h4 className="text-cream font-semibold mb-4 text-sm">Artisanat d'Algérie</h4>
             <div className="space-y-2.5 text-sm">
               {[
                 { label: 'Tous les produits', action: () => { resetFilters(); setView('catalog'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
@@ -887,14 +750,14 @@ function DarnaFooter() {
             </div>
           </div>
 
-          {/* Notre Histoire */}
+          {/* L'Héritage */}
           <div>
-            <h4 className="text-cream font-semibold mb-4 text-sm">Notre Histoire</h4>
+            <h4 className="text-cream font-semibold mb-4 text-sm">L'Héritage</h4>
             <div className="space-y-2.5 text-sm">
-              <p className="hover:text-gold transition-colors cursor-pointer">\u00c0 propos de Darna</p>
-              <p className="hover:text-gold transition-colors cursor-pointer">Nos Artisans</p>
-              <p className="hover:text-gold transition-colors cursor-pointer">Engagement éthique</p>
-              <p className="hover:text-gold transition-colors cursor-pointer">Blog</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">L'histoire de Darna</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Nos Maîtres Artisans</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Savoir-faire Ancestral</p>
+              <p className="hover:text-gold transition-colors cursor-pointer">Carnet de voyage</p>
             </div>
           </div>
 
@@ -914,15 +777,18 @@ function DarnaFooter() {
           </div>
         </div>
 
-        <Separator className="bg-cream/10 mb-6" />
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-cream/40">
-          <p>&copy; 2025 Darna for commerce. Fait avec amour par Selma Haci. Licence : Selma Haci.</p>
-          <div className="flex gap-6">
-            <p className="hover:text-cream/70 cursor-pointer transition-colors">Confidentialité</p>
-            <p className="hover:text-cream/70 cursor-pointer transition-colors">CGV</p>
-            <p className="hover:text-cream/70 cursor-pointer transition-colors">Cookies</p>
+        <Separator className="bg-cream/10 mb-8" />
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-cream/40">
+          <p>© {new Date().getFullYear()} Darna for commerce — Fait avec cœur en Algérie 🇩🇿</p>
+          <div className="flex gap-8">
+            <span className="hover:text-gold cursor-pointer transition-colors">Confidentialité</span>
+            <span className="hover:text-gold cursor-pointer transition-colors">CGV</span>
+            <span className="hover:text-gold cursor-pointer transition-colors">Plan du site</span>
           </div>
         </div>
+      </div>
+      <div className="absolute bottom-0 right-0 opacity-[0.03] pointer-events-none">
+         <ZelligePattern className="w-96 h-96" id="footer-zellige" />
       </div>
     </footer>
   );
@@ -1086,8 +952,7 @@ function HomeView() {
         </div>
       </section>
 
-      {/* Cinematic Video Showcase: L'ART DE DARNA */}
-      <VideoShowcase />
+
 
       {/* Trust Markers Bar */}
       <section className="py-16 bg-white border-b border-sand relative z-20">
@@ -1241,7 +1106,6 @@ function HomeView() {
         <ParallaxDepthLayer depth={0.8} className="absolute inset-0 opacity-[0.05]">
           <ZelligePattern className="w-full h-full text-white" id="zellige-story" />
         </ParallaxDepthLayer>
-        
         {/* Subtle glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gold/5 blur-[150px] rounded-full pointer-events-none" />
         
@@ -1380,6 +1244,11 @@ function CatalogView() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
+    // Show filters by default on desktop
+    if (window.innerWidth >= 1024) {
+      setShowFilters(true);
+    }
+
     api('/api/categories').then(r => r.json()).then(setCategories).catch((err) => {
       toast.error('Erreur de chargement', { description: 'Veuillez réessayer' });
     });
@@ -1429,13 +1298,18 @@ function CatalogView() {
             Accueil
           </button>
           <ChevronRight className="w-3 h-3" />
-          <span className="text-charcoal font-medium">Boutique</span>
+          <span className="text-charcoal font-medium">
+            {filters.sortBy === 'newest' ? 'Nouvelles Créations' : 'Artisanat d\'Algérie'}
+          </span>
         </div>
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="mb-2">
-            <h1 className="text-3xl font-serif font-bold text-charcoal">La Boutique</h1>
+            <h1 className="text-3xl font-serif font-bold text-charcoal">
+              {filters.sortBy === 'newest' ? 'Nouvelles Créations' : 'L\'Artisanat de Darna'}
+            </h1>
+            <p className="text-xs text-terracotta font-bold uppercase tracking-widest mt-1">Savoir-faire Ancestral</p>
             <p className="text-charcoal/50 mt-1 font-medium">{total} produits trouvés</p>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -1477,7 +1351,33 @@ function CatalogView() {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Active Filters Bar */}
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <span className="text-xs text-charcoal/40 font-medium uppercase tracking-wider mr-2">Filtres actifs :</span>
+            {filters.category !== 'all' && (
+              <Badge variant="secondary" className="bg-terracotta text-white hover:bg-terracotta-dark transition-all rounded-lg group">
+                {filters.category}
+                <button onClick={() => setFilters({ category: 'all' })} className="ml-2 group-hover:scale-110"><X className="w-3 h-3" /></button>
+              </Badge>
+            )}
+            {(filters.minPrice > 0 || filters.maxPrice < 50000) && (
+              <Badge variant="secondary" className="bg-olive text-white hover:bg-olive-dark transition-all rounded-lg group">
+                {formatPrice(filters.minPrice, currency)} - {formatPrice(filters.maxPrice, currency)}
+                <button onClick={() => setFilters({ minPrice: 0, maxPrice: 50000 })} className="ml-2 group-hover:scale-110"><X className="w-3 h-3" /></button>
+              </Badge>
+            )}
+            {filters.search && (
+              <Badge variant="secondary" className="bg-blue-500 text-white hover:bg-blue-600 transition-all rounded-lg group">
+                 Recherche: {filters.search}
+                <button onClick={() => setFilters({ search: '' })} className="ml-2 group-hover:scale-110"><X className="w-3 h-3" /></button>
+              </Badge>
+            )}
+            {filters.category === 'all' && filters.minPrice === 0 && filters.maxPrice === 50000 && !filters.search && (
+              <span className="text-[10px] text-charcoal/30 italic">Aucun filtre appliqué</span>
+            )}
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-8">
           {/* Mobile Filter Toggle */}
           <div className="lg:hidden">
             <Button 
@@ -1558,7 +1458,7 @@ function CatalogView() {
           </AnimatePresence>
 
           {/* Product Grid */}
-          <div className="flex-1">
+          <Perspective3DSection className="flex-1 overflow-hidden" offset={['start end', 'end start']}>
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -1583,11 +1483,11 @@ function CatalogView() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <DepthRevealGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" columns={3}>
                   {products.map((product, i) => (
                     <ProductCard key={product.id} product={product} index={i} />
                   ))}
-                </div>
+                </DepthRevealGrid>
                 {total > 12 && (
                   <div className="flex justify-center mt-10 gap-2">
                     <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} className="border-terracotta/15 hover:bg-terracotta/5 rounded-xl">
@@ -1601,7 +1501,7 @@ function CatalogView() {
                 )}
               </>
             )}
-          </div>
+          </Perspective3DSection>
         </div>
       </div>
     </div>
@@ -1968,41 +1868,94 @@ function ProductDetailView() {
               ))}
             </div>
 
-            {/* Specs */}
-            <Separator className="bg-terracotta/10" />
-            <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-charcoal">Caractéristiques</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {product.dimensions && (
-                  <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
-                    <span className="text-charcoal/50">Dimensions</span>
-                    <span className="font-medium text-charcoal">{product.dimensions}</span>
+            {/* Structured Info Tabs */}
+            <Tabs defaultValue="specs" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-sand/50 rounded-xl p-1">
+                <TabsTrigger value="specs" className="rounded-lg text-xs font-semibold data-[state=active]:bg-terracotta data-[state=active]:text-white transition-all">Spécificités</TabsTrigger>
+                <TabsTrigger value="artisanat" className="rounded-lg text-xs font-semibold data-[state=active]:bg-terracotta data-[state=active]:text-white transition-all">Héritage</TabsTrigger>
+                <TabsTrigger value="delivery" className="rounded-lg text-xs font-semibold data-[state=active]:bg-terracotta data-[state=active]:text-white transition-all">Expédition</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="specs" className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center justify-between p-3 bg-white border border-sand rounded-xl shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-sand flex items-center justify-center text-terracotta"><BoxSelect className="w-4 h-4" /></div>
+                      <span className="text-xs font-medium text-charcoal/60 uppercase tracking-wider text-[10px]">Dimensions</span>
+                    </div>
+                    <span className="text-sm font-bold text-charcoal">{product.dimensions || 'Standard'}</span>
                   </div>
-                )}
-                {product.weight && (
-                  <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
-                    <span className="text-charcoal/50">Poids</span>
-                    <span className="font-medium text-charcoal">{product.weight} kg</span>
+                  <div className="flex items-center justify-between p-3 bg-white border border-sand rounded-xl shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-sand flex items-center justify-center text-terracotta"><ScaleIcon className="w-4 h-4" /></div>
+                      <span className="text-xs font-medium text-charcoal/60 uppercase tracking-wider text-[10px]">Poids approx.</span>
+                    </div>
+                    <span className="text-sm font-bold text-charcoal">{product.weight ? `${product.weight} kg` : 'N/A'}</span>
                   </div>
-                )}
-                <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
-                  <span className="text-charcoal/50">En stock</span>
-                  <span className={`font-medium ${product.stock > 10 ? 'text-olive' : product.stock > 0 ? 'text-gold' : 'text-terracotta'}`}>
-                    {product.stock > 0 ? `${product.stock} unités` : 'Rupture'}
-                  </span>
+                  <div className="flex items-center justify-between p-3 bg-white border border-sand rounded-xl shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-sand flex items-center justify-center text-terracotta"><Award className="w-4 h-4" /></div>
+                      <span className="text-xs font-medium text-charcoal/60 uppercase tracking-wider text-[10px]">Authenticité</span>
+                    </div>
+                    <span className="text-sm font-bold text-olive">Certifié Artisanat DZ</span>
+                  </div>
                 </div>
-                <div className="flex justify-between p-3 bg-sand/70 rounded-xl">
-                  <span className="text-charcoal/50">Note</span>
-                  <span className="font-medium text-charcoal">{product.rating}/5</span>
+                <div className="p-4 bg-sand/30 rounded-xl">
+                  <p className="text-xs leading-relaxed text-charcoal/70">
+                    <span className="font-bold block mb-1 uppercase tracking-tighter text-[9px] text-terracotta">L'Art de Darna :</span>
+                    Ce produit a été conçu avec des matériaux locaux premium. La main d'œuvre est 100% algérienne, assurant une qualité dépassant les standards industriels habituels.
+                  </p>
                 </div>
-              </div>
-            </div>
+              </TabsContent>
 
-            {/* Full Description */}
+              <TabsContent value="artisanat" className="mt-4 space-y-4">
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <div className="relative aspect-video rounded-xl overflow-hidden shadow-lg border-2 border-white">
+                    <img src="/images/hero-bg.png" alt="Atelier" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal/80 via-transparent to-transparent flex items-end p-4">
+                      <p className="text-xs text-white/90 font-medium italic">"Chaque point de couture est une promesse d'éternité." — Maître Artisan</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-white border border-sand rounded-xl text-center">
+                       <p className="text-xl font-bold text-terracotta mb-0.5">100%</p>
+                       <p className="text-[10px] text-charcoal/40 uppercase font-bold">Fait Main</p>
+                    </div>
+                    <div className="p-3 bg-white border border-sand rounded-xl text-center">
+                       <p className="text-xl font-bold text-terracotta mb-0.5">58</p>
+                       <p className="text-[10px] text-charcoal/40 uppercase font-bold">Wilayas</p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="delivery" className="mt-4 space-y-3">
+                 <div className="space-y-2">
+                    {[
+                      { title: 'Livrage Rapide (Yalidine)', desc: '24h à 48h partout en Algérie', active: true },
+                      { title: 'Paiement à la Livraison', desc: 'Sérénité totale lors de la réception', active: true },
+                      { title: 'Garantie Satisfaction', desc: 'Échange ou retour sous 7 jours', active: true },
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex gap-4 p-3 bg-white border border-sand rounded-xl hover:border-terracotta/20 transition-all">
+                        <div className="w-6 h-6 rounded-full bg-olive/10 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-olive" />
+                        </div>
+                        <div>
+                           <p className="text-[11px] font-bold text-charcoal">{item.title}</p>
+                           <p className="text-[10px] text-charcoal/50">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                 </div>
+              </TabsContent>
+            </Tabs>
+
             <Separator className="bg-terracotta/10" />
             <div>
-              <h3 className="font-semibold text-sm text-charcoal mb-2">Description</h3>
-              <p className="text-sm text-charcoal/60 leading-relaxed">{product.description}</p>
+              <h3 className="font-semibold text-sm text-charcoal mb-2 uppercase tracking-widest text-[10px]">Le mot des créateurs</h3>
+              <p className="text-sm text-charcoal/60 leading-relaxed italic border-l-2 border-terracotta/30 pl-4 py-1">
+                "{product.description.split('.')[0]}. Nous avons apporté un soin particulier aux détails pour que cet objet ne soit pas qu'un simple achat, mais une partie de votre foyer."
+              </p>
             </div>
           </div>
         </div>
@@ -2070,7 +2023,11 @@ function CheckoutView() {
       });
       if (res.ok) {
         clearCart();
-        toast.success('Commande confirmée !', { description: `+${pointsEarned} points fidélité` });
+        toast.success('Commande confirmée !', { 
+          description: user?.role === 'admin' 
+            ? 'Votre commande a été enregistrée avec succès.' 
+            : `Félicitations ! Vous avez gagné +${pointsEarned} points fidélité.` 
+        });
         setView('orders');
       }
     } catch {
@@ -2304,12 +2261,14 @@ function CheckoutView() {
                 </div>
 
                 {/* Points earned */}
-                <div className="flex items-center gap-2 p-3 bg-gold/10 rounded-xl mt-2">
-                  <Sparkles className="w-4 h-4 text-gold flex-shrink-0" />
-                  <span className="text-sm font-medium text-charcoal/70">
-                    +{pointsEarned} points fidélité avec cette commande !
-                  </span>
-                </div>
+                {user?.role !== 'admin' && (
+                  <div className="flex items-center gap-2 p-3 bg-gold/10 rounded-xl mt-2">
+                    <Sparkles className="w-4 h-4 text-gold flex-shrink-0" />
+                    <span className="text-sm font-medium text-charcoal/70">
+                      +{pointsEarned} points fidélité avec cette commande !
+                    </span>
+                  </div>
+                )}
 
                 {shipping > 0 && (
                   <div className="flex items-center gap-2 p-3 bg-terracotta/5 rounded-xl">
@@ -2355,9 +2314,6 @@ function ProfileView() {
     { name: 'Sofiane H.', points: 1900, avatar: 'SH' },
   ];
 
-  const pointsToNextLevel = (user?.level || 1) * 1000 + 1000;
-  const progressPercent = Math.min(100, ((user?.points || 0) / pointsToNextLevel) * 100);
-
   if (!isLoggedIn || !user) {
     return (
       <div className="pt-20 min-h-screen bg-cream flex items-center justify-center">
@@ -2373,6 +2329,46 @@ function ProfileView() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  const pointsToNextLevel = (user.level || 1) * 1000 + 1000;
+  const progressPercent = Math.min(100, ((user.points || 0) / pointsToNextLevel) * 100);
+
+  if (user.role === 'admin') {
+    return (
+      <div className="pt-20 min-h-screen bg-cream">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+           <div className="w-20 h-20 rounded-3xl bg-terracotta/10 flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-10 h-10 text-terracotta" />
+           </div>
+           <h1 className="text-3xl font-bold text-charcoal mb-2">Profil Administrateur</h1>
+           <p className="text-charcoal/50 max-w-md mx-auto mb-8">
+             En tant qu&apos;administrateur, vous gérez l&apos;ensemble de la plateforme Darna. Votre compte est exempté du programme de fidélité client.
+           </p>
+           
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+              <Card className="border-0 shadow-sm rounded-2xl hover:shadow-md transition-all cursor-pointer" onClick={() => setView('admin')}>
+                 <CardContent className="p-6">
+                    <BarChart3 className="w-8 h-8 text-terracotta mx-auto mb-3" />
+                    <h3 className="font-bold text-charcoal text-sm">Dashboard Admin</h3>
+                    <p className="text-xs text-charcoal/40 mt-1">Gérez les ventes, stocks et analytiques</p>
+                 </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm rounded-2xl hover:shadow-md transition-all cursor-pointer" onClick={() => setView('orders')}>
+                 <CardContent className="p-6">
+                    <ShoppingBag className="w-8 h-8 text-olive mx-auto mb-3" />
+                    <h3 className="font-bold text-charcoal text-sm">Toutes les Commandes</h3>
+                    <p className="text-xs text-charcoal/40 mt-1">Suivi global des expéditions</p>
+                 </CardContent>
+              </Card>
+           </div>
+           
+           <Button variant="outline" className="mt-10 border-terracotta/20 text-terracotta rounded-xl" onClick={() => setView('home')}>
+             Retour au site public
+           </Button>
+        </div>
       </div>
     );
   }
@@ -2676,20 +2672,6 @@ export default function Page() {
 
   return (
     <main className="min-h-screen flex flex-col bg-cream relative overflow-x-hidden">
-      {/* Announcement Bar */}
-      <div className="bg-charcoal text-white py-2 px-4 shadow-sm relative z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-4 text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em]">
-          <motion.div
-            animate={{ opacity: [0.6, 1, 0.6] }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="flex items-center gap-4"
-          >
-            <span>Livraison gratuite sur Alger dès 15,000 DA</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-gold" />
-            <span className="text-gold">Code: MARHBA</span>
-          </motion.div>
-        </div>
-      </div>
       <ScrollProgressBar3D />
       <FloatingParticles />
       <DarnaNavbar />

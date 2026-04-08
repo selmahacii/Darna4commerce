@@ -21,10 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Smart recommendation logic:
-    // 1. Same category, high-rated products
-    // 2. Similar price range
-    // 3. Popular items (high review count)
+   
     const sameCategory = await db.product.findMany({
       where: {
         categoryId: product.categoryId,
